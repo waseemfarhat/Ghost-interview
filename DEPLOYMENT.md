@@ -27,24 +27,20 @@ only need to do the steps that require **your** accounts/logins.
 
 ---
 
-## Step 1 — Push the code to GitHub (requires your GitHub login)
+## Step 1 — Push a deployment branch to your existing GitHub repo
 
-The project is already set up as a local Git repo with one commit, and your
-secrets (`backend/.env`) are correctly **excluded** from it.
+The local project and the existing GitHub `main` branch have unrelated Git
+histories. Push the project as a new `render-deploy` branch so the existing
+`main` is preserved. Your secrets (`backend/.env`) are excluded from Git.
 
-1. Go to https://github.com/new and create a **new empty repository**
-   (do **not** add a README, .gitignore, or license — keep it empty). Name it
-   e.g. `ghost-interview`.
-2. In VS Code, open a terminal in the project root and run (replace the URL
-   with your new repo's URL):
+1. In a terminal at the project root, run:
 
    ```bash
-   git branch -M main
-   git remote add origin https://github.com/<your-username>/ghost-interview.git
-   git push -u origin main
+   git push https://github.com/waseemfarhat/Ghost-interview.git main:render-deploy
    ```
 
-   (GitHub will prompt you to sign in — that's expected.)
+   This creates/updates only the `render-deploy` branch; it does not replace
+   `main`. GitHub may prompt you to sign in.
 
 ---
 
@@ -64,8 +60,9 @@ Render uses dynamic outbound IPs, so Atlas must allow connections from anywhere.
 ## Step 3 — Deploy on Render (requires your Render login)
 
 1. Go to https://dashboard.render.com → **New +** → **Blueprint**.
-2. Connect your GitHub and select the `ghost-interview` repo. Render reads the
-   included `render.yaml` and shows one service: **ghost-interview**.
+2. Connect your GitHub and select `waseemfarhat/Ghost-interview`, then select
+   the `render-deploy` branch. Render reads the included `render.yaml` and
+   shows one service: **ghost-interview**.
 3. Render will ask you to fill in the **secret** environment variables (these
    are NOT stored in the repo — they stay private in Render). Copy the values
    from your local `backend/.env`:

@@ -4,10 +4,10 @@
   "private": true,
   "description": "Ghost Interview (AI Mock Interviewer) — deployment orchestration for a single Render web service that serves the built React SPA and the Express API together.",
   "engines": {
-    "node": ">=20.0.0"
+    "node": "22.x"
   },
   "scripts": {
-    "render-build": "npm --prefix frontend ci && npm --prefix frontend run build && npm --prefix backend ci && node -e \"const fs=require('fs');const path=require('path');const src=path.resolve('frontend/dist');const dest=path.resolve('backend/public');fs.rmSync(dest,{recursive:true,force:true});fs.mkdirSync(dest,{recursive:true});fs.cpSync(src,dest,{recursive:true});console.log('Copied frontend/dist ->',dest);\"",
+    "render-build": "npm --prefix frontend ci --include=dev && npm --prefix frontend run build && npm --prefix backend ci && node -e \"const fs=require('fs');const path=require('path');const src=path.resolve('frontend/dist');const dest=path.resolve('backend/public');fs.rmSync(dest,{recursive:true,force:true});fs.mkdirSync(dest,{recursive:true});fs.cpSync(src,dest,{recursive:true});console.log('Copied frontend/dist ->',dest);\"",
     "render-start": "node backend/src/server.js"
   }
 }
