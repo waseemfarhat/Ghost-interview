@@ -3,6 +3,12 @@
 Full-stack implementation of the FYP described in the Scope Document, SRS, and SDD
 (Ehsan Hamza & Shaharyar Altaf, COMSATS Vehari).
 
+> **🚀 Want to deploy it online for free?** See [`DEPLOYMENT.md`](./DEPLOYMENT.md)
+> for a step-by-step guide (Render + your existing MongoDB Atlas). The repo is
+> already configured with a `render.yaml` blueprint — you mainly just push to
+> GitHub and click through Render.
+
+
 ## Architecture
 
 ```
