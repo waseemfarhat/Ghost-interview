@@ -1,0 +1,7 @@
+{"level":"info","message":"MongoDB connected: ac-2icnzwx-shard-00-02.xz4bzzh.mongodb.net/test","timestamp":"2026-10-10T17:23:59.080Z"}
+{"level":"info","message":"Ghost Interview API listening on port 5055 [production]","timestamp":"2026-10-10T17:23:59.096Z"}
+{"level":"http","message":"::1 - - [10/Oct/2026:17:24:11 +0000] \"GET /api/health HTTP/1.1\" 200 98 \"-\" \"Mozilla/5.0 (Windows NT; Windows NT 10.0; en-GB) WindowsPowerShell/5.1.19041.6456\"","timestamp":"2026-10-10T17:24:11.236Z"}
+{"level":"http","message":"::1 - - [10/Oct/2026:17:24:11 +0000] \"GET / HTTP/1.1\" 200 1182 \"-\" \"Mozilla/5.0 (Windows NT; Windows NT 10.0; en-GB) WindowsPowerShell/5.1.19041.6456\"","timestamp":"2026-10-10T17:24:11.285Z"}
+{"level":"http","message":"::1 - - [10/Oct/2026:17:24:11 +0000] \"GET /dashboard HTTP/1.1\" 200 1182 \"-\" \"Mozilla/5.0 (Windows NT; Windows NT 10.0; en-GB) WindowsPowerShell/5.1.19041.6456\"","timestamp":"2026-10-10T17:24:11.329Z"}
+{"level":"warn","message":"GET /api/nope - 404 Route not found: GET /api/nope","timestamp":"2026-10-10T17:24:11.363Z"}
+{"level":"http","message":"::1 - - [10/Oct/2026:17:24:11 +0000] \"GET /api/nope HTTP/1.1\" 404 60 \"-\" \"Mozilla/5.0 (Windows NT; Windows NT 10.0; en-GB) WindowsPowerShell/5.1.19041.6456\"","timestamp":"2026-10-10T17:24:11.365Z"}

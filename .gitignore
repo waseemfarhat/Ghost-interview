@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Env files
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Build output
+dist/
+build/
+
+# Production SPA bundle copied into the backend at deploy time (see package.json render-build)
+backend/public/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# Claude Code personal settings (permission overrides, etc.)
+.claude/settings.local.json
+
+# Python (ai-service)
+ai-service/__pycache__/
+ai-service/.venv/
+ai-service/*.pyc
+
+# Test coverage
+coverage/

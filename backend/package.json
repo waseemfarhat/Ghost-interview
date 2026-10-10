@@ -1,0 +1,37 @@
+{
+  "name": "ghost-interview-backend",
+  "version": "1.0.0",
+  "description": "Ghost Interview (AI Mock Interviewer) - Backend API",
+  "type": "module",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "test": "node --test",
+    "test:smoke": "node scripts/smoke.mjs",
+    "test:e2e": "node scripts/e2e.mjs",
+    "seed": "node src/utils/seed.js",
+    "seed:roles": "node src/utils/seedJobRoles.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "compression": "^1.7.4",
+    "cookie-parser": "^1.4.6",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-mongo-sanitize": "^2.2.0",
+    "express-rate-limit": "^7.2.0",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.3.2",
+    "morgan": "^1.10.0",
+    "nodemailer": "^9.0.3",
+    "sentiment": "^5.0.2",
+    "winston": "^3.13.0",
+    "zod": "^3.23.4"
+  }
+}

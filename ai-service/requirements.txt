@@ -1,0 +1,10 @@
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+python-multipart==0.0.9
+pydantic==2.9.2
+
+# Added and pinned in Phase 3 when speech-to-text and emotion detection
+# are implemented:
+#   faster-whisper   (self-hosted speech-to-text)
+#   deepface          (self-hosted facial emotion detection)
+#   tensorflow-cpu    (DeepFace's inference backend)

@@ -1,0 +1,48 @@
+# Render Blueprint — https://render.com/docs/blueprint-spec
+# Deploys Ghost Interview as a single free web service that serves BOTH the
+# built React SPA and the Express API from one origin (no CORS / cookie issues).
+#
+# How to use:
+#   1. Push this repo to GitHub/GitLab/Bitbucket.
+#   2. In Render: New + -> Blueprint -> pick this repo.
+#   3. When prompted, fill in the "sync: false" secret values below
+#      (copy them from your local backend/.env — Render keeps them private).
+#   4. Deploy. Your app is live at the service's onrender.com URL.
+
+services:
+  - type: web
+    name: ghost-interview
+    runtime: node
+    plan: free
+    # Build the React app, copy it into backend/public, and install backend deps.
+    buildCommand: npm run render-build
+    # Start the Express server (it also serves the built SPA in production).
+    startCommand: npm run render-start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Public URL of this service — used for password-reset email links.
+      # Update this if Render assigns a different URL than the one below.
+      - key: CLIENT_URL
+        value: https://ghost-interview.onrender.com
+      # Helps Node resolve MongoDB Atlas SRV records on some networks.
+      - key: MONGO_DNS_SERVERS
+        value: 8.8.8.8,1.1.1.1
+      - key: JWT_ACCESS_EXPIRES_IN
+        value: 15m
+      - key: JWT_REFRESH_EXPIRES_IN
+        value: 7d
+      - key: BCRYPT_SALT_ROUNDS
+        value: "12"
+      # --- Secrets: Render will prompt you for these; they are NOT stored here ---
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_ACCESS_SECRET
+        sync: false
+      - key: JWT_REFRESH_SECRET
+        sync: false
+      # Optional: only needed if you want real password-reset emails.
+      # Leave blank to log emails to the console instead.
+      - key: SMTP_PASS
+        sync: false

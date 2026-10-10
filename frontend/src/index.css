@@ -1,0 +1,289 @@
+@import "tailwindcss";
+
+/* Class-based dark mode: toggled via `.dark` on <html> (see ThemeContext),
+   instead of Tailwind v4's default prefers-color-scheme-only behavior. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ============================================================
+   DESIGN TOKENS — "Aurora Intelligence"
+   A calm, premium AI identity: indigo→violet→fuchsia primary,
+   layered glass surfaces, and aurora accent blooms.
+   ============================================================ */
+:root {
+  --color-surface: #ffffff;
+  --color-surface-alt: #f5f5fb;
+  --color-elevated: #ffffff;
+  --color-border: #e8e8f0;
+  --color-text: #15151d;
+  --color-text-muted: #5d6070;
+  --color-ring: rgba(109, 75, 255, 0.35);
+  --shadow-color: 250 60% 30%;
+}
+
+.dark {
+  --color-surface: #14141d;
+  --color-surface-alt: #0d0d14;
+  --color-elevated: #1c1c28;
+  --color-border: #2a2a3a;
+  --color-text: #f5f5f8;
+  --color-text-muted: #a2a4b6;
+  --color-ring: rgba(139, 116, 255, 0.45);
+  --shadow-color: 260 60% 4%;
+}
+
+@theme {
+  --color-brand-50: #f3f1ff;
+  --color-brand-100: #e7e3ff;
+  --color-brand-200: #d1c9ff;
+  --color-brand-300: #b3a1ff;
+  --color-brand-400: #8b74ff;
+  --color-brand-500: #6d4bff;
+  --color-brand-600: #5a32f0;
+  --color-brand-700: #4a26cc;
+  --color-brand-800: #3d21a3;
+  --color-brand-900: #331e82;
+
+  /* Accent — cyan/teal for data & positive signals */
+  --color-accent-400: #38e0d0;
+  --color-accent-500: #14c8bd;
+  --color-accent-600: #0ba79f;
+
+  --font-sans: 'Inter', system-ui, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-surface-alt);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'cv11', 'ss01';
+}
+
+::selection {
+  background: rgba(109, 75, 255, 0.25);
+}
+
+/* Consistent focus ring across all interactive elements */
+.focus-ring {
+  outline: none;
+}
+.focus-ring:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
+  border-radius: 0.5rem;
+}
+
+/* Refined, slim scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 9999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+  background-clip: content-box;
+}
+
+
+/* ============================================================
+   KEYFRAMES
+   ============================================================ */
+@keyframes gi-fade-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes gi-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes gi-scale-in {
+  from { opacity: 0; transform: scale(0.94); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes gi-slide-left {
+  from { opacity: 0; transform: translateX(24px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+@keyframes gi-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+@keyframes gi-pulse-glow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(109, 75, 255, 0.45); }
+  50% { box-shadow: 0 0 0 14px rgba(109, 75, 255, 0); }
+}
+@keyframes gi-shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes gi-gradient-pan {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+@keyframes gi-bob {
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-6px) scale(1.03); }
+}
+@keyframes gi-bar {
+  0%, 100% { transform: scaleY(0.3); }
+  50% { transform: scaleY(1); }
+}
+@keyframes gi-aurora {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -20px) scale(1.08); }
+  66% { transform: translate(-20px, 20px) scale(0.96); }
+}
+
+/* ============================================================
+   ANIMATION UTILITIES
+   ============================================================ */
+.gi-fade-up { animation: gi-fade-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.gi-fade-in { animation: gi-fade-in 0.6s ease both; }
+.gi-scale-in { animation: gi-scale-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.gi-slide-left { animation: gi-slide-left 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.gi-float { animation: gi-float 6s ease-in-out infinite; }
+.gi-pulse-glow { animation: gi-pulse-glow 2s ease-out infinite; }
+.gi-bob { animation: gi-bob 2.4s ease-in-out infinite; }
+
+/* Staggered children: parent fades its children up in sequence */
+.gi-stagger > * { animation: gi-fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.gi-stagger > *:nth-child(1) { animation-delay: 0.05s; }
+.gi-stagger > *:nth-child(2) { animation-delay: 0.12s; }
+.gi-stagger > *:nth-child(3) { animation-delay: 0.19s; }
+.gi-stagger > *:nth-child(4) { animation-delay: 0.26s; }
+.gi-stagger > *:nth-child(5) { animation-delay: 0.33s; }
+.gi-stagger > *:nth-child(6) { animation-delay: 0.4s; }
+.gi-stagger > *:nth-child(7) { animation-delay: 0.47s; }
+.gi-stagger > *:nth-child(8) { animation-delay: 0.54s; }
+.gi-stagger > *:nth-child(9) { animation-delay: 0.61s; }
+
+
+/* ============================================================
+   SURFACE & EFFECT UTILITIES
+   ============================================================ */
+
+/* Glassmorphism surface */
+.gi-glass {
+  background: color-mix(in srgb, var(--color-surface) 72%, transparent);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid color-mix(in srgb, var(--color-border) 70%, transparent);
+}
+
+/* Gradient text */
+.gi-gradient-text {
+  background-image: linear-gradient(120deg, var(--color-brand-500), #b06dff 45%, var(--color-accent-500));
+  background-size: 200% 200%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: gi-gradient-pan 8s ease infinite;
+}
+
+/* Animated gradient border card (revealed on hover) */
+.gi-gradient-border {
+  position: relative;
+  background: var(--color-surface);
+  border-radius: 1rem;
+}
+.gi-gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg, var(--color-brand-400), transparent 40%, transparent 60%, var(--color-accent-500));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  pointer-events: none;
+}
+.gi-gradient-border:hover::before { opacity: 1; }
+
+/* Interactive lift used on cards */
+.gi-lift {
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s ease, border-color 0.35s ease;
+}
+.gi-lift:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 18px 40px -18px hsl(var(--shadow-color) / 0.35);
+  border-color: color-mix(in srgb, var(--color-brand-400) 55%, var(--color-border));
+}
+
+/* Soft brand glow for primary CTAs / avatars */
+.gi-glow { box-shadow: 0 10px 30px -8px rgba(109, 75, 255, 0.55); }
+.gi-glow-accent { box-shadow: 0 10px 30px -8px rgba(20, 200, 189, 0.5); }
+
+/* Aurora background blooms (decorative, behind content) */
+.gi-aurora {
+  position: absolute;
+  border-radius: 9999px;
+  filter: blur(70px);
+  opacity: 0.5;
+  pointer-events: none;
+  will-change: transform;
+}
+.dark .gi-aurora { opacity: 0.4; }
+.gi-aurora-1 { background: radial-gradient(circle, var(--color-brand-400), transparent 70%); animation: gi-aurora 18s ease-in-out infinite; }
+.gi-aurora-2 { background: radial-gradient(circle, var(--color-accent-500), transparent 70%); animation: gi-aurora 22s ease-in-out infinite reverse; }
+.gi-aurora-3 { background: radial-gradient(circle, #d16dff, transparent 70%); animation: gi-aurora 26s ease-in-out infinite; }
+
+/* Shimmer skeleton */
+.gi-skeleton {
+  background: linear-gradient(90deg, var(--color-surface-alt) 25%, color-mix(in srgb, var(--color-border) 60%, var(--color-surface-alt)) 37%, var(--color-surface-alt) 63%);
+  background-size: 200% 100%;
+  animation: gi-shimmer 1.4s ease infinite;
+  border-radius: 0.5rem;
+}
+
+/* Audio activity bars (interview mic indicator) */
+.gi-audio-bar {
+  width: 3px;
+  border-radius: 9999px;
+  background: currentColor;
+  transform-origin: bottom;
+  animation: gi-bar 1s ease-in-out infinite;
+}
+
+/* Primary gradient button background */
+.gi-btn-gradient {
+  background-image: linear-gradient(120deg, var(--color-brand-600), var(--color-brand-500) 50%, #7a4bff);
+  background-size: 150% 150%;
+  transition: background-position 0.5s ease, transform 0.2s ease, box-shadow 0.3s ease;
+}
+.gi-btn-gradient:hover {
+  background-position: 100% 50%;
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px -10px rgba(109, 75, 255, 0.7);
+}
+.gi-btn-gradient:active { transform: translateY(0); }
+
+/* Accessible motion preference: honor reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+

@@ -1,0 +1,288 @@
+ 
+ 
+ 
+ 
+ 
+COMSATS University Islamabad, Vehari Campus 
+ 
+ 
+Project Proposal 
+(SCOPE DOCUMENT) 
+for 
+ 
+PROJECT NAME 
+Ghost Interview (AI Mock Interviewer) 
+ 
+By 
+Ehsan Hamza SP23-BCS-019 
+Shaharyar Altaf SP23-BCS-055 
+ 
+ 
+Supervisor 
+ 
+Sir Qizar Javed 
+ 
+ 
+ 
+Bachelor of Science in Computer Science (2023-2027) 
+ 
+
+ 
+SCOPE DOCUMENT REVSION HISTORY 
+ 
+ 
+No. Comment Action 
+   
+   
+   
+   
+   
+ 
+ 
+ 
+Supervisor Signature:__________________ 
+Date:_____________ 
+ 
+ 
+ 
+ 
+ 
+i 
+Table of Content 
+ Abstract .................................................................................................................................................................. i 
+ 1. Introduction ...................................................................................................................................................... 2 
+ 2. Problem Statement ........................................................................................................................................... 2 
+ 3. Problem Solution for Proposed System............................................................................................................. 2 
+ 4. Related System Analysis/Literature Review ..................................................................................................... 3 
+ 5. Advantages/Benefits of Proposed System ........................................................................................................ 3 
+ 6. Scope ................................................................................................................................................................. 4 
+ 7. Modules ............................................................................................................................................................. 4 
+ 8. System Limitations/Constraints ....................................................................................................................... 4 
+ 9. Software Process Methodology ........................................................................................................................ 5 
+ 10. Tools and Technologies ................................................................................................................................... 5 
+ 11. Project Stakeholders and Roles ...................................................................................................................... 6 
+ 12. Team Members Individual Tasks/Work Division ............................................................................................ 6 
+ 13. Data Gathering Approach................................................................................................................................ 6 
+ 14. Concepts .......................................................................................................................................................... 6 
+ 15. Gantt chart....................................................................................................................................................... 7 
+ 16. Mockups .......................................................................................................................................................... 7 
+ 17. Conclusion ..................................................................................................................................................... 10 
+ 
+ 
+ 
+ 
+i 
+Project Category: (Select all the major domains of proposed project) 
+ 
+ 
+ 
+Abstract 
+ 
+AI Interview Ghost (Mock Interviewer) is an intelligent web -based interview preparation 
+system designed to simulate real -time job interviews using artificial intelligence. The system 
+provides users with an interactive interview experience through a virtual AI avatar that asks 
+domain-specific interview questions using a realistic human -like voice. Unlike traditional 
+mock interview systems, this project focuses not only on the verbal responses of the user but 
+also on non -verbal cues such as facial expressions, eye contact, confidence level, and 
+emotional state. 
+The proposed system analyzes the candidate’s speech, emotions, and body lang uage using 
+advanced AI models and generates a comprehensive Confidence and Competency Report. 
+This report highlights communication skills, nervousness indicators, usage of filler words, and 
+overall interview readiness. The system aims to help students and job seekers improve their 
+interview performance through data -driven feedback and self-assessment. 
+ 
+ 
+ 
+A-Desktop Application/Information System 
+C- Problem Solving and Artificial Intelligence 
+B-Web Application/Web Application based Information System 
+D-Simulation and Modeling 
+ E- Smartphone Application 
+ F- 
+Smartphone Game G- Networks H- Image Processing  Other (specify category)   
+ 2 
+1. Introduction 
+This document presents the project scope for the proposed system titled AI Interview Ghost 
+(Mock Interviewer) . The purpose  of this project is to provide an intelligent and interactive 
+interview preparation platform using artificial intelligence technologies. Interviews are a 
+critical part of job selection processes, and many candidates struggle due to lack of practice 
+and real-time feedback. Traditional mock interviews are limited in availability and often lack 
+detailed performance analysis.  
+With the advancement of AI, it is now possible to simulate realistic interview scenarios. This 
+system integrates voice interaction, facial emotion detection, and speech analysis to create a 
+virtual interviewer experience. The AI avatar interacts with users through voice -based 
+questions and evaluates their responses using multiple AI models. The project is developed 
+as a web -based applicatio n to ensure accessibility and scalability. The system is particularly 
+useful for students, fresh graduates, and professionals preparing for technical or HR 
+interviews. 
+2. Problem Statement 
+Many job candidates face difficulty during interviews due to nervousne ss, lack of confidence, 
+and poor communication skills. Most available interview preparation platforms focus only on 
+question-answer practice and ignore non -verbal communication aspects such as facial 
+expressions, eye contact, and emotional stability. Human  mock interviews are costly, time -
+limited, and not always available to everyone.  
+Existing systems also fail to provide real -time emotion analysis and speech behavior insights 
+such as filler word usage. Candidates do not receive objective feedback on their confidence 
+and emotional performance. There is a lack of intelligent systems that combine voice 
+interaction, emotion detection, and AI -driven evaluation in a single platform. This project is 
+developed to overcome these limitations and to provide a comprehe nsive interview 
+preparation solution while enhancing the students’ skills in artificial intelligence, machine 
+learning, and web technologies.  
+3. Problem Solution for Proposed System 
+The proposed AI Interview Ghost system addresses the identified problems by p roviding a 
+fully automated mock interview environment. The system allows users to select a job role, 
+after which an AI avatar conducts an interview using voice -based interaction. The user 
+responds through a webcam and microphone, enabling the system to analyze both verbal and 
+non-verbal behavior. 
+ 3 
+Speech-to-text conversion is used to analyze spoken responses and detect filler words. 
+Emotion detection models analyze facial expressions and eye movement to determine 
+nervousness and confidence levels. Sentiment analysis is applied to evaluate the emotional 
+tone of the answers. Based on these analyses, the system generates a detailed Confidence 
+and Competency Report. This solution provides users with actionable insights and helps them 
+improve interview performance  through repeated practice.  
+4. Related System Analysis/Literature Review 
+System 1: HireVue 
+HireVue provides AI -based video interviews but lacks detailed emotional feedback and real -
+time guidance. 
+System 2: Pramp 
+Pramp offers peer -to-peer mock interviews but d epends on human availability and lacks AI -
+based emotion analysis.  
+System 3: Interviewing.io  
+Interviewing.io focuses on technical interviews but does not analyze facial expressions or 
+emotional behavior. 
+Table 1: Related System Analysis with proposed project solution 
+Application Name Weakness Proposed Project Solution  
+HireVue Limited emotion insights Deep emotion & confidence analysis  
+Pramp Human dependency Fully automated AI interviewer  
+Interviewing.io No emotion detection Facial and sentiment analysis  
+ 
+5. Advantages/Benefits of Proposed System 
+ Real-time AI-based mock interview experience  
+ Emotion and confidence analysis using webcam  
+ Detection of filler words and speech patterns  
+ Detailed performance report generation  
+ Accessible web-based system 
+ Cost-effective alternative to human interviews  
+ Improves communication and interview confidence  
+ 4 
+6. Scope 
+The scope of AI Interview Ghost includes developing a web-based interview simulation system 
+using AI technologies. The system will allow users to select job roles and participate in AI -
+driven interviews. The AI avatar will ask interview questions using voice interaction. The 
+system will analyze user responses through speech -to-text processing and facial emotion 
+detection. A confidence and c ompetency report will be generated after each interview 
+session. 
+The project includes sentiment analysis, filler word detection, and emotion recognition. The 
+system will not provide real job placements or human interview scheduling. Advanced AI 
+model train ing is out of scope and pre -trained models will be used. The focus remains on 
+interview preparation and performance analysis.  
+7. Modules 
+Module 1: User Role Selection Module 
+Allows users to select job roles and interview categories.  
+Module 2: AI Interview Avatar Module 
+Conducts interviews using voice-based AI avatar. 
+Module 3: Speech Analysis Module 
+Converts speech to text and detects filler words.  
+Module 4: Emotion & Sentiment Analysis Module 
+Analyzes facial expressions and emotional tone.  
+Module 5: Confidence & Competency Report Module 
+Generates performance reports with insights.  
+Module 6: System Dashboard Module 
+Displays interview history and analytics.  
+8. System Limitations/Constraints 
+ 5 
+ Requires stable internet connection  
+ Emotion detection accuracy depends o n camera quality 
+ Limited to predefined job roles  
+ Privacy concerns related to webcam usage  
+9. Software Process Methodology 
+The Object-Oriented Software Development Methodology will be used for this project. This methodology is 
+selected due to its modular structure and reusability. It supports scalability and effective system maintenance. 
+It is suitable for AI-based web applications. 
+10. Tools and Technologies 
+Table 2: Tools and Technologies for Proposed Project 
+Tools Version Rationale 
+Visual Studio Code Latest Development IDE 
+React.js 18+ Frontend framework 
+Node.js 20+ Backend runtime 
+WebRTC Latest Camera & mic access 
+Technologies: 
+Technology Version Rationale 
+JavaScript ES6+ Programming 
+OpenAI Whisper Latest Speech-to-text 
+Gemini API Latest Interview logic 
+DeepFace / Hume AI Latest Emotion detection 
+ElevenLabs Latest AI voice generation 
+ 
+ 6 
+11. Project Stakeholders and Roles 
+Table 3: Project Stakeholders for Proposed Project 
+Project Sponsor COMSATS University, Islamabad  
+Stakeholder 
+ Students: System development  
+ Supervisor: Project guidance  
+ FYP Committee: Evaluation  
+ 
+12. Team Members Individual Tasks/Work Division 
+Table 4: Team Member Work Division for Proposed Project 
+Student Name Registration No Responsibility 
+Ehsan Hamza SP23-BCS-019 AI models & backend 
+Shaharyar Altaf SP23-BCS-055 
+ 
+Frontend & UI 
+ 
+13. Data Gathering Approach 
+Data will be gathered through interviews, online research, and analysis of existing interview platforms. 
+Questionnaires will be used to understand user requirements. Research papers and AI documentation will also 
+be reviewed . 
+14. Concepts 
+Concept 1: Artificial Intelligence  
+Used for interview logic and evaluation.  
+Concept 2: Emotion Detection  
+Facial expression analysis using AI models.  
+ 7 
+Concept 3: Speech-to-Text Processing 
+Converts user speech into text for analysis.  
+Concept 4: Sentiment Analysis  
+Evaluates emotional tone of responses  
+15. Gantt chart 
+The Gantt chart will be created using MS Project to define timelines, dependencies, and milestones for each 
+module. 
+ 
+ 
+Figure 1: Gantt Chart 
+16. Mockups 
+Mockups will include interview screen, AI avatar interaction, report dashboard, and analytics 
+view. 
+
+ 8 
+ 
+Figure 2: Job Role Selection Screen  
+ 
+Figure 3: AI Interview Avatar Interaction Screen  
+
+ 9 
+ 
+Figure 4: Emotion and Speech Analysis Dashboard  
+ 
+Figure 5: Confidence and Competency Report Screen  
+
+ 10 
+17. Conclusion 
+AI Interview Ghost is an innovative interview preparation system that combines AI -driven 
+voice interaction, emotion analysis, and performance evaluation. The project provides a 
+realistic interview environment and actionable feedback. It enhances user confidence and 
+communication skills. The system demonstrates the practical application of artificia l 
+intelligence in real-world scenarios 
+References 
+1) A. Radford et al., “Robust Speech Recognition via Large -Scale Weak Supervision,” 
+OpenAI, 2022. [Online]. Available: https://openai.com/research/whi sper 
+(Accessed: Jan. 2026). 
+2) I. Goodfellow, Y. Bengio, and A. Courville, Deep Learning. Cambridge, MA, USA: 
+MIT Press, 2016. 
+3) S. Li and W. Deng, “Deep Facial Expression Recognition: A Survey,” IEEE 
+Transactions on Affective Computing , vol. 13, no. 3, pp. 1195–1215, 2022. 
+4) J. Devlin et al., “BERT: Pre-training of Deep Bidirectional Transformers for Language 
+Understanding,” in Proc. NAACL-HLT, Minneapolis, MN, USA, 2019, pp. 4171 –4186. 
+ 

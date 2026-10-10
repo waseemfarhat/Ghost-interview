@@ -1,0 +1,546 @@
+ 
+ 
+COMSATS University Islamabad, Vehari  
+Campus,Pakistan 
+Department of Computer Science 
+Ghost Interview (AI Mock Interviewer)  
+ 
+Software Requirements Speci cation (SRS) 
+Bachelor of Science in Computer Science 
+Submitted By 
+ Ehsan Hamza SP23-BCS-019 
+ Shaharyar Altaf SP23-BCS-055 
+Supervisor 
+Sir Qizar Javed 
+Contents 
+
+ 
+1 
+3 Requirement Analysis  ................................ ................................ ................................ .............  2 
+3.1 Introduction to Requirement Analysis ................................ ................................ ................  2 
+3.2 Requirement Elicitation Techniques ................................ ................................ ...................  2 
+3.3 User Classes and Characteristics................................ ................................ ..........................  4 
+3.4 System Overview ................................ ................................ ................................ ..................  4 
+3.5 Use Case Model ................................ ................................ ................................ ....................  4 
+3.5.1 Use Case Diagram ................................ ................................ ................................ ..............  5 
+3.5.2 Use Case Descriptions ................................ ................................ ................................ ....... 5 
+3.5.3 Event-Response Table ................................ ................................ ................................ ....... 5 
+3.6 Functional Requirements ................................ ................................ ................................ ..... 5 
+3.6.1 Module 1: User Management ................................ ................................ ...........................  5 
+3.6.2 Module 2: AI Interview Module................................ ................................ ........................  7 
+3.6.3 Module 3: Reporting and Analytics ................................ ................................ ................  12 
+3.7 Non-Functional Requirements ................................ ................................ ...........................  12 
+3.7.1 Performance Requirements ................................ ................................ ............................  12 
+3.7.2 Security Requirements ................................ ................................ ................................ .... 13 
+3.7.3 Reliability Requirements ................................ ................................ ................................ . 13 
+3.7.4 Usability Requirements ................................ ................................ ................................ ... 13 
+3.7.5 Scalability Requirements ................................ ................................ ................................ . 14 
+3.7.6 Maintainability Requirements ................................ ................................ ........................  14 
+3.8 External Interface Requirements ................................ ................................ .......................  14 
+3.8.1 User Interface Requirements ................................ ................................ ..........................  14 
+3.8.2 Hardware Interface Requirements ................................ ................................ .................  15 
+3.8.3 Software Interface Requirements ................................ ................................ ..................  15 
+3.8.4 Communication Interface Requirements................................ ................................ ....... 15 
+3.9 Assumptions and Dependencies ................................ ................................ ........................  16 
+ 
+2 
+3.10 Requirement Traceability Matrix ................................ ................................ .....................  16 
+ 
+Chapter 3 
+Requirement Analysis 
+3.1 Introduction to Requirement Analysis 
+This chapter presents a structured and formal speci cation of sys tem requirements for 
+Ghost Interview AI Mock Interviewer. The purpose of this chapter is to clearly de ne what 
+the system shall accomplish before proceeding to the system design phase. The 
+requirements documented here serve as a contractual foundation for implementation, 
+validation, and system testing. 
+The requirement analysis includes requirement elicitation techniques, identi cation of 
+stakeholders, use case modeling, functional requirements, non -functional requirements, 
+and external interface requirement s. All requirements are written in measurable and 
+testable format using standard requirement engineering principles. 
+3.2 Requirement Elicitation Techniques 
+Requirements for this project were identi ed using the following techniques: 
+Stakeholder Interviews: To capture user expectations and constraints from students, 
+job seekers, and supervisors. 
+Literature Review: Analysis of research papers on emotion detection, speech analysis, 
+and interview preparation systems. 
+Analysis of Existing Solutions: Examination of HireVue, Pramp, and Interviewing.io to 
+identify functional gaps. 
+ 
+3 
+Online Questionnaires: To understand user requirements and pain points regarding 
+interview preparation. 
+Ghost Interview AI Mock Interviewer SRS Document 
+4 
+AI Documentation Review: Study of OpenAI Whisper, Gemini API, DeepFace, and 
+ElevenLabs documentation. 
+3.3 User Classes and Characteristics 
+This section identi es di erent user categories interacting with the system. Each user class 
+is de ned along with their responsibilities, access privileges, and technical pro ciency level. 
+Table 3.1: User Classes and Characteristics 
+User Class Description Technical Level 
+Administrator Manages system con guration, user 
+accounts, monitoring, and reports. 
+Advanced 
+End User (Can- 
+didate) 
+Uses the system to select job roles, conduct 
+AI mock interviews, receive performance 
+reports, and track improvement. 
+Basic 
+External System AI APIs and third-party services (Whisper, 
+Gemini, DeepFace, ElevenLabs) interacting 
+with the application backend. 
+Technical 
+3.4 System Overview 
+The proposed system operates within a three -tier web architecture designed to support 
+modular interaction between user int erfaces, backend processing logic, AI services, and 
+data storage. The system supports role -based interactions and ensures secure 
+communication between internal modules and external AI services. 
+The system boundary includes: 
+React.js-based frontend (user interface and webcam/microphone interaction). 
+Node.js backend (business logic, API orchestration, session management). 
+AI processing layer (speech -to-text, emotion detection, language model, voice 
+synthesis). 
+Database (user data, interview sessions, reports). 
+3.5 Use Case Model 
+The use case model represents high -level system interactions between actors and system 
+functionalities. It de nes system boundaries and captures functional behavior from a user 
+perspective. 
+Ghost Interview AI Mock Interviewer SRS Document 
+5 
+3.5.1 Use Case Diagram 
+ 
+Figure 3.1: Use Case Diagram of Ghost Interview System 
+The diagram illustrates the interaction between the Candidate, Administrator, and external 
+AI systems with the major system functionalities including login, job role selection, 
+interview session, speech analysis, emotion analysis, and report generation. 
+3.5.2 Use Case Descriptions 
+Module 1: User Management 
+Module 2: AI Interview Module 
+Module 3: Reporting and Dashboard 
+3.5.3 Event-Response Table 
+3.6 Functional Requirements 
+Functional requirements de ne the core services and behaviors that the system shall 
+provide. These requirements are derived directly from the use case model. Each 
+requirement is uniquely identi ed, measurable, and written using formal speci cation 
+language following IEEE-style structure, categorized by system modules. 
+3.6.1 Module 1: User Management 
+FR-1.1 User Registration 
+Table 3.2: UC-1.1: User Registration 
+
+Ghost Interview AI Mock Interviewer SRS Document 
+6 
+Use Case ID UC-1.1 
+Use Case Name User Registration 
+Actors End User (Candidate) 
+Description This use case describes how a new user registers into 
+the Ghost Interview system. 
+Trigger User selects the Sign Up option on the homepage. 
+Preconditions User is not already registered. 
+Postconditions User account is successfully created and stored in the 
+database. 
+Normal Flow 1. User navigates to the registration page. 
+2. User enters name, email, and password. 
+3. System validates input elds. 
+4. System stores data securely in the database. 
+5. Con rmation email is sent and success message 
+isdisplayed. 
+Alternative Flow If validation fails, the system displays appropriate error 
+messages and prompts the user to correct the input. 
+Table 3.3: UC-1.2: User Login 
+Use Case ID UC-1.2 
+Use Case Name User Login 
+Actors End User, Administrator 
+Description This use case describes how a registered user logs into 
+the system. 
+Trigger User selects the Login option. 
+Preconditions User has a registered account. 
+Postconditions User is authenticated and redirected to the dashboard. 
+Normal Flow 1. User enters email and password. 
+2. System validates credentials against stored 
+records. 
+3. System grants access and redirects to the 
+dashboard. 
+Alternative Flow If credentials are invalid, the system displays an error 
+message and prompts re-entry. 
+FR-1.2 User Authentication 
+Table 3.4: UC-2.1: Job Role Selection and Interview Initiation 
+Use Case ID UC-2.1 
+Use Case Name Job Role Selection and Interview Initiation 
+Actors End User 
+Description The user selects a job role and initiates an AI -driven 
+mock interview session. 
+Ghost Interview AI Mock Interviewer SRS Document 
+7 
+Trigger User clicks Start Interview after selecting a job role. 
+Preconditions User is logged in; webcam and microphone are 
+accessible. 
+Postconditions Interview session is started and AI avatar begins asking 
+questions. 
+Normal Flow 1. User selects a job role from the available list. 
+2. System loads relevant interview questions via 
+Gemini API. 
+3. AI avatar voice is activated through ElevenLabs. 
+4. Avatar asks the rst interview question. 
+5. Webcam and microphone recording begins. 
+Alternative Flow If webcam or microphone access is denied, the system 
+displays a permission error and halts the session. 
+Table 3.5: UC-2.2: Speech Analysis 
+Use Case ID UC-2.2 
+Use Case Name Speech Analysis 
+Actors End User, External System (Whisper API) 
+Description The system converts the user’s spoken response to text 
+and identi es ller words. 
+Trigger User speaks in response to the AI avatar’s question. 
+Preconditions Interview session is active; microphone access is 
+granted. 
+Postconditions Text transcript and ller word count are stored for the 
+session. 
+Normal Flow 1. User speaks their answer. 
+2. Audio is captured and sent to OpenAI 
+WhisperAPI. 
+3. Whisper converts audio to text. 
+4. System scans transcript for ller words (e.g., um 
+,uh ). 
+5. Results are stored in the session data. 
+Alternative Flow If audio quality is too low, system ags low -quality 
+recording and requests user to repeat. 
+3.6.2 Module 2: AI Interview Module 
+FR-2.1 Job Role Selection 
+Table 3.6: UC-2.3: Emotion and Sentiment Analysis 
+Use Case ID UC-2.3 
+Use Case Name Emotion and Sentiment Analysis 
+Actors End User, External System (DeepFace / Hume AI) 
+Description The system analyzes the user’s facial expressions and 
+emotional tone during the interview. 
+Ghost Interview AI Mock Interviewer SRS Document 
+8 
+Trigger Video frames are captured during the interview session. 
+Preconditions Webcam access is granted; interview session is active. 
+Postconditions Emotion metrics (con dence, nervousness, eye contact) 
+are stored. 
+Normal Flow 1. Webcam frames are captured at regular 
+intervals. 
+2. Frames are sent to DeepFace / Hume AI for 
+analysis. 
+3. Emotion labels and con dence scores are 
+returned. 
+4. Sentiment of text transcript is analyzed. 
+5. All metrics are stored in the session database. 
+Alternative Flow If camera feed is unavailable, emotion analysis is 
+skipped and user is noti ed. 
+Table 3.7: UC-3.1: Con dence and Competency Report Generation 
+Use Case ID UC-3.1 
+Use Case Name Con dence and Competency Report Generation 
+Actors End User 
+Description After the interview session, the system generates a 
+detailed performance report covering speech, emotion, 
+and competency metrics. 
+Trigger Interview session is completed. 
+Preconditions At least one interview session has been completed 
+successfully. 
+Postconditions Report is generated, stored, and displayed to the user. 
+Normal Flow 1. System aggregates speech, emotion, and 
+sentimentdata. 
+2. System computes con dence score, ller word 
+frequency, and emotion timeline. 
+3. Report is formatted and stored in the database. 
+4. User is redirected to the Report screen with 
+insights. 
+Alternative Flow If session data is incomplete, system generates a partial 
+report and noti es the user. 
+FR-2.2 AI Avatar Interview Conduction 
+FR-2.3 Speech-to-Text Conversion 
+Table 3.8: Event-Response Table 
+Event Source System Response 
+Ghost Interview AI Mock Interviewer SRS Document 
+9 
+User Login Attempt End User Validate credentials and grant or 
+deny access. 
+Job Role Selection End User Load interview questions from 
+Gemini API. 
+Interview Started End User Activate AI avatar, begin webcam 
+and microphone recording. 
+User Speaks Answer End User Capture audio and send to Whisper 
+for transcription. 
+Video Frame Captured System Send frame to emotion detection  
+model; store result. 
+Interview Completed System Aggregate data and generate Con 
+dence & Competency Report. 
+Report Requested End User Retrieve stored report and display 
+on dashboard. 
+API Unavailability External System Display error message and pause 
+session gracefully. 
+ Table 3.9: Functional Requirement User Registration 
+Identi er FR-1.1 
+Title User Registration 
+Requirement The system shall allow users to create an account by 
+providing a valid name, email address, and password. 
+Source Stakeholder Requirement 
+Rationale Enables authorized access to system services and 
+personalized interview tracking. 
+Dependencies Database Connectivity 
+Priority High 
+ Table 3.10: Functional Requirement User Authentication 
+Identi er FR-1.2 
+Title User Authentication 
+Requirement The system shall authenticate users using email and 
+password and maintain secure sessions. 
+Source Stakeholder Requirement 
+Rationale Ensures only registered users can access interview and 
+reporting features. 
+Dependencies FR-1.1 (User Registration), Database Connectivity 
+Priority High 
+FR-2.4 Filler Word Detection 
+ Table 3.11: Functional Requirement Job Role Selection 
+Identi er FR-2.1 
+Title Job Role Selection 
+Ghost Interview AI Mock Interviewer SRS Document 
+10 
+Requirement The system shall allow users to select from prede ned 
+job roles  and interview categories before initiating a 
+session. 
+Source System Requirement Speci cation 
+Rationale Enables domain-speci c question generation tailored to 
+the user’s target role. 
+Dependencies FR-1.2, Gemini API Integration 
+Priority High 
+ Table 3.12: Functional Requirement AI Avatar Interview 
+Identi er FR-2.2 
+Title AI Avatar Interview Conduction 
+Requirement The system shall conduct voice -based interviews 
+through an AI avatar that asks contextually relevant 
+questions using a realistic human -like voice via the 
+ElevenLabs API. 
+Source System Requirement Speci cation 
+Rationale Provides a realistic and immersive mock interview 
+experience. 
+Dependencies FR-2.1, Gemini API, ElevenLabs API, WebRTC 
+Priority High 
+ Table 3.13: Functional Requirement Speech-to-Text Conversion 
+Identi er FR-2.3 
+Title Speech-to-Text Conversion 
+Requirement The system shall convert the user’s spoken responses 
+into text using OpenAI Whisper and store the transcript 
+for analysis. 
+Source System Requirement Speci cation 
+Rationale Enables verbal response evaluation and ller word 
+detection. 
+Dependencies OpenAI Whisper API, Microphone Access via WebRTC 
+Priority High 
+FR-2.5 Facial Emotion Detection 
+FR-2.6 Sentiment Analysis 
+ Table 3.14: Functional Requirement Filler Word Detection 
+Identi er FR-2.4 
+Title Filler Word Detection 
+Ghost Interview AI Mock Interviewer SRS Document 
+11 
+Requirement The system shall identify and count ller words (e.g., um, 
+uh, like, you know ) in the speech transcript. 
+Source System Requirement Speci cation 
+Rationale Provides actionable feedback on speech quality and 
+uency. 
+Dependencies FR-2.3 (Speech-to-Text) 
+Priority Medium 
+ Table 3.15: Functional Requirement Facial Emotion Detection 
+Identi er FR-2.5 
+Title Facial Emotion Detection 
+Requirement The system shall analyze webcam video frames using  
+DeepFace or Hume AI to detect facial emotions, eye 
+contact, and con dence indicators during the interview. 
+Source System Requirement Speci cation 
+Rationale Provides non-verbal behavior analysis, a key 
+component of comprehensive interview assessment. 
+Dependencies Webcam Access via WebRTC, DeepFace / Hume AI API 
+Priority High 
+ Table 3.16: Functional Requirement Sentiment Analysis 
+Identi er FR-2.6 
+Title Sentiment Analysis 
+Requirement The system shall evaluate the emotional tone (positive, 
+negative, neutral) of the user’s transcribed responses 
+using NLP-based sentiment analysis. 
+Source System Requirement Speci cation 
+Rationale Complements emotion detection with language -level 
+emotional assessment. 
+Dependencies FR-2.3 (Speech-to-Text) 
+Priority Medium 
+ Table 3.17: Functional Requirement Report Generation 
+Identi er FR-3.1 
+Title Con dence and Competency Report Generation 
+Requirement The system shall generate a detailed Con dence and 
+Competency Report after each interview session, 
+including speech quality, emotion timeline, ller word 
+count, sentiment summary, and an overall readiness 
+score. 
+Source Business Requirement 
+Ghost Interview AI Mock Interviewer SRS Document 
+12 
+Rationale Supports user self-assessment and performance 
+improvement. 
+Dependencies FR-2.3, FR-2.4, FR-2.5, FR-2.6, Database Module 
+Priority High 
+3.6.3 Module 3: Reporting and Analytics 
+FR-3.1 Con dence and Competency Report Generation 
+FR-3.2 Interview History Dashboard 
+ Table 3.18: Functional Requirement Interview History Dashboard 
+Identi er FR-3.2 
+Title Interview History Dashboard 
+Requirement The system shall provide users with a dashboard 
+displaying their interview history, past reports, 
+performance trends, and analytics. 
+Source Business Requirement 
+Rationale Enables users to track improvement over time and 
+review past sessions. 
+Dependencies FR-3.1, Database Module, FR-1.2 
+Priority Medium 
+3.7 Non-Functional Requirements 
+Non-functional requirements de ne quality attributes that describe how the system 
+performs. These requirements are measurable and support system reliability, usability, 
+performance, security, and maintainability. 
+3.7.1 Performance Requirements 
+PER-1: The system shall load the main dashboard within 3 seconds under normal 
+operating conditions. 
+PER-2: Speech -to-text transcription responses from OpenAI  Whisper shall be 
+returned within 5 seconds of audio submission. 
+PER-3: Emotion detection results shall be processed within 2 seconds per video frame 
+batch. 
+PER-4: The system shall handle at least 50 concurrent interview sessions without signi 
+cant degradation in response time. 
+Ghost Interview AI Mock Interviewer SRS Document 
+13 
+PER-5: The AI avatar’s rst question shall be delivered within 3 seconds of the interview 
+session start. 
+3.7.2 Security Requirements 
+SEC-1: The system shall implement secure user authentication using hashed 
+passwords (e.g., bcrypt). 
+SEC-2: All data transmission shall use HTTPS protocol to ensure encryption in transit. 
+SEC-3: Webcam and microphone access shall require explicit user permission via 
+browser consent prompts. 
+SEC-4: Role-based access control shall be enforced (Admin vs Candidate). 
+SEC-5: API keys for third-party services shall be stored server-side and never exposed 
+to the client. 
+SEC-6: User interview recordings and session data shall be stored securely and not 
+shared with third parties. 
+3.7.3 Reliability Requirements 
+REL-1: The system shall maintain at least 99% uptime during the evaluation period. 
+REL-2: System failures shall not result in loss of completed interview session data. 
+REL-3: The system shall implement error handling for third -party API unavailability 
+and notify users gracefully. 
+REL-4: Backup and recovery mechanisms shall be implemented for the database. 
+3.7.4 Usability Requirements 
+USE-1: The interface shall be intuitive and easy to navigate without prior training. 
+USE-2: Clear and meaningful error messages sha ll be displayed for all failure 
+scenarios. 
+USE-3: The system shall follow standard UI/UX design principles and be visually 
+appealing. 
+USE-4: The application shall be fully responsive across desktop and laptop screen 
+sizes. 
+USE-5: The AI avatar interaction interface shall clearly indicate when the avatar is 
+speaking and when the user is expected to respond. 
+Ghost Interview AI Mock Interviewer SRS Document 
+14 
+3.7.5 Scalability Requirements 
+SCA-1: The system architecture shall support increasing number of registered users 
+and concurrent sessions. 
+SCA-2: The backend shall allow horizontal scaling through cloud deployment. 
+SCA-3: The database design shall support large volumes of session transcripts and 
+report data. 
+SCA-4: New job roles and interview categories shall be addable without major 
+restructuring. 
+3.7.6 Maintainability Requirements 
+MAIN-1: The system shall follow modular architecture principles with clearly 
+separated frontend, backend, and AI service layers. 
+MAIN-2: Source code shall be documented clearly using inline comments and 
+README les. 
+MAIN-3: Futur e updates, including additional AI models or job roles, shall be 
+integrable without major system restructuring. 
+MAIN-4: The system shall use version -controlled repositories (e.g., GitHub) for code 
+management. 
+3.8 External Interface Requirements 
+This sectio n de nes how the system interacts with external entities including users, 
+hardware devices, software systems, and communication networks. 
+3.8.1 User Interface Requirements 
+UI-1: The system shall provide a graphical web -based user interface accessible via 
+modern browsers. 
+UI-2: Standard font sizes (12 14pt) shall ensure readability throughout the 
+application. 
+UI-3: Layout shall be responsive across desktop and large-screen devices. 
+UI-4: Navigation shall remain consistent across all modules (login, role sele ction, 
+interview, report, dashboard). 
+Ghost Interview AI Mock Interviewer SRS Document 
+15 
+UI-5: The interview screen shall display a live webcam feed, AI avatar, and question 
+text simultaneously. 
+3.8.2 Hardware Interface Requirements 
+HI-1: The system shall operate on standard computing devices (PC, laptop) with a 
+modern web browser. 
+HI-2: The system requires access to a functional webcam and microphone for 
+interview session functionality. 
+HI-3: Minimum hardware: 4GB RAM, modern dual-core processor, HD webcam (720p 
+or higher recommended for accurate emotion detection). 
+3.8.3 Software Interface Requirements 
+SI-1: The system shall interact with a relational or non-relational database for storing 
+user data, sessions, and reports. 
+SI-2: The system shall integrate with the Gemini API for AI-driven interview question 
+generation. 
+SI-3: The system shall integrate with OpenAI Whisper API for speech -to-text 
+conversion. 
+SI-4: The system shall integrate with DeepFace / Hume AI for facial emotion 
+detection. 
+SI-5: The system shall integrate with ElevenLabs API for realistic AI voice synthesis. 
+SI-6: The frontend shall be built using React.js (v18+) and the backend using Node.js 
+(v20+). 
+3.8.4 Communication Interface Requirements  
+CI-1: The system shall use HTTPS protocol for all secure client-server communication. 
+CI-2: RESTful APIs shall be used for backend communication between frontend and 
+server. 
+CI-3: WebRTC shall be used for real-time webcam and microphone access within the 
+browser. 
+CI-4: All third-party API calls shall be made server-side to protect API credentials. 
+Ghost Interview AI Mock Interviewer SRS Document 
+16 
+3.9 Assumptions and Dependencies 
+The system assumes stable internet connectivity for all users during interview 
+sessions. 
+Third-party services (Gemini, Whisper, DeepFace, ElevenLabs) are assumed to remain 
+available and functional throughout the project. 
+Users are assumed to possess basic digital literacy and be comfortable using web 
+browsers. 
+Required cloud hosting infrastructure is assumed to be available during deployment. 
+Users are assumed to have access to a functional HD webcam and microphone. 
+Pre-trained AI models will be used; no custom model training is assumed within 
+project scope. 
+3.10 Requirement Traceability Matrix 
+This matrix maps project objectives to functional requirements to ensure alignment and 
+completeness. 
+Table 3.19: Requirement Traceability Matrix 
+Objective Use Case Functional Requirement 
+Provide user
+ access 
+management 
+UC-1.1, UC-1.2 FR-1.1, FR-1.2 
+Conduct AI mock in- 
+terview sessions 
+UC-2.1, UC-2.2 FR-2.1, FR-2.2, FR-2.3 
+Analyze speech qual- 
+ity 
+UC-2.2 FR-2.3, FR-2.4 
+Analyze non-
+verbal behavior 
+UC-2.3 FR-2.5, FR-2.6 
+Generate performance 
+reports 
+UC-3.1 FR-3.1 
+Provide interview 
+history & analytics 
+UC-3.1 FR-3.2 
+Chapter Summary 
+This chapter presented a structured requirement analysis of the Ghost Interview AI Mock 
+Interviewer system. It de ned requirement elicitation techniques, user classes, use case 
+models, functional requirements, non -functional requirements, and external interface 
+requirements. A traceability matrix was included to ensure alignment between objectives 
+Ghost Interview AI Mock Interviewer SRS Document 
+17 
+and implementation requirements. These requirements form the formal foundation for the 
+system design presented in the next chapter. 
