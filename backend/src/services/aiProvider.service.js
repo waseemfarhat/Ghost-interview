@@ -79,7 +79,7 @@ export async function transcribeInterviewAudio(audio, contentType) {
       method: 'POST',
       headers: { Authorization: `Bearer ${env.ai.openAiApiKey}` },
       body: form,
-      signal: AbortSignal.timeout(4_500)
+      signal: AbortSignal.timeout(30_000)
     });
 
     if (!response.ok) {

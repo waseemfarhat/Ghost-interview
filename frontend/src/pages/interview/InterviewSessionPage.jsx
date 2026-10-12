@@ -11,6 +11,29 @@ import { Button } from '../../components/ui/Button';
 import { Spinner, FullPageSpinner } from '../../components/ui/Spinner';
 
 const EMOTION_BATCH_SIZE = 5;
+/**
+ * Turns a getUserMedia rejection (or a missing mediaDevices API) into a
+ * human-readable reason for the "access required" screen, so the candidate
+ * knows exactly what to fix instead of hitting a dead end.
+ */
+function describeMediaError(error) {
+  switch (error) {
+    case 'insecure':
+      return 'Your browser is blocking camera/microphone access because this page is not being served over HTTPS. Open the site using its https:// address (or http://localhost) and try again.';
+    case 'NotAllowedError':
+    case 'SecurityError':
+      return 'Access to the microphone was blocked. Click the padlock/camera icon in your browser address bar, allow the microphone for this site, then reload.';
+    case 'NotFoundError':
+    case 'OverconstrainedError':
+      return 'No microphone was found on this device. Connect a microphone or headset and reload.';
+    case 'NotReadableError':
+      return 'The microphone is already in use by another app or tab. Close anything else using it and reload.';
+    default:
+      return 'Ghost Interview needs access to your microphone to record and analyze your spoken answers. Please allow access and try again.';
+  }
+}
+
+
 
 export default function InterviewSessionPage() {
   const { id: sessionId } = useParams();
@@ -18,6 +41,11 @@ export default function InterviewSessionPage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [mediaStatus, setMediaStatus] = useState('requesting'); // requesting | granted | denied
+  const [mediaError, setMediaError] = useState(null); // machine error name or 'insecure'
+  const [cameraStatus, setCameraStatus] = useState('requesting'); // requesting | granted | denied
+  // Safety net: when the mic is unavailable, the candidate can still finish the
+  // interview by typing. This unlocks the session UI without any media.
+  const [textOnly, setTextOnly] = useState(false);
   const [question, setQuestion] = useState(null);
   const [questionIndex, setQuestionIndex] = useState(0);
   const [totalQuestions, setTotalQuestions] = useState(0);
@@ -96,18 +124,69 @@ export default function InterviewSessionPage() {
     let cancelled = false;
 
     (async () => {
+      // navigator.mediaDevices.getUserMedia only exists in a secure context
+      // (HTTPS or http://localhost). On a plain-HTTP host it is undefined and
+      // there is no way to reach the mic/camera — surface that clearly.
+      if (!navigator.mediaDevices?.getUserMedia) {
+        if (!cancelled) {
+          setMediaError('insecure');
+          setMediaStatus('denied');
+        }
+        return;
+      }
+
+      // 1) Microphone is REQUIRED. Request it FIRST and on its own so that a
+      //    missing/blocked/in-use camera can never take the mic down with it.
+      //    (This combined-request failure was the root cause of "mic not
+      //    working" on many phones and laptops.)
+      let audioStream;
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+        audioStream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+          video: false
+        });
+      } catch (error) {
+        if (!cancelled) {
+          setMediaError(error?.name || 'Error');
+          setMediaStatus('denied');
+        }
+        return;
+      }
+
+      if (cancelled) {
+        audioStream.getTracks().forEach((t) => t.stop());
+        return;
+      }
+
+      // 2) Camera is OPTIONAL (only powers facial emotion detection). Ask for
+      //    it separately so a camera failure never blocks the interview.
+      let activeStream;
+      try {
+        const videoStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'user', width: { ideal: 640 } },
+          audio: false
+        });
         if (cancelled) {
-          stream.getTracks().forEach((t) => t.stop());
+          audioStream.getTracks().forEach((t) => t.stop());
+          videoStream.getTracks().forEach((t) => t.stop());
           return;
         }
-        streamRef.current = stream;
-        setMediaStatus('granted');
-        emotionDetector.loadModels();
+        activeStream = new MediaStream([...audioStream.getAudioTracks(), ...videoStream.getVideoTracks()]);
+        setCameraStatus('granted');
       } catch {
-        setMediaStatus('denied');
+        if (cancelled) {
+          audioStream.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        // No camera available/denied: continue with audio only. Emotion
+        // detection simply won't run; the interview still works.
+        activeStream = audioStream;
+        setCameraStatus('denied');
       }
+
+      streamRef.current = activeStream;
+      setMediaStatus('granted');
+      emotionDetector.loadModels();
     })();
 
     return () => {
@@ -135,19 +214,21 @@ export default function InterviewSessionPage() {
   }, [mediaStatus]);
 
   // Speak each new question aloud and start emotion detection once ready.
+  // Browser speech synthesis needs no microphone, so this also runs in the
+  // text-only fallback so the AI interviewer still "asks" the question.
   useEffect(() => {
-    if (mediaStatus !== 'granted' || !question) return;
+    if ((mediaStatus !== 'granted' && !textOnly) || !question) return;
     synthesis.speak(question.text, sessionId, aiProviders.elevenLabs);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [question, mediaStatus, aiProviders.elevenLabs]);
+  }, [question, mediaStatus, textOnly, aiProviders.elevenLabs]);
 
   useEffect(() => {
-    if (mediaStatus === 'granted' && emotionDetector.isReady && videoRef.current) {
+    if (mediaStatus === 'granted' && cameraStatus === 'granted' && emotionDetector.isReady && videoRef.current) {
       emotionDetector.startDetection(videoRef.current, handleEmotionReading);
     }
     return () => emotionDetector.stopDetection();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mediaStatus, emotionDetector.isReady]);
+  }, [mediaStatus, cameraStatus, emotionDetector.isReady]);
 
   useEffect(() => {
     return () => {
@@ -165,9 +246,13 @@ export default function InterviewSessionPage() {
     setManualTranscript('');
     recognition.resetTranscript();
 
+    // Record the microphone on every answer (when possible) so transcription
+    // can happen server-side via Whisper. This is also the ONLY way to capture
+    // a spoken answer on browsers without the Web Speech API (e.g. iOS Safari),
+    // where recognition.start() does nothing. We only upload the recording on
+    // submit when the server has a speech provider configured.
     const stream = streamRef.current;
-    let whisperRecordingStarted = false;
-    if (aiProviders.whisper && stream?.getAudioTracks().length && typeof MediaRecorder !== 'undefined') {
+    if (stream?.getAudioTracks().length && typeof MediaRecorder !== 'undefined') {
       try {
         const audioStream = new MediaStream(stream.getAudioTracks());
         const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find((type) =>
@@ -180,13 +265,14 @@ export default function InterviewSessionPage() {
         };
         recorder.start();
         mediaRecorderRef.current = recorder;
-        whisperRecordingStarted = true;
       } catch {
         mediaRecorderRef.current = null;
       }
     }
 
-    if (!whisperRecordingStarted) recognition.start();
+    // Skip live speech recognition in text-only mode (no mic available — it
+    // would just error and re-prompt for a permission we already lack).
+    if (!textOnly) recognition.start();
     setPhase('listening');
   };
 
@@ -203,17 +289,20 @@ export default function InterviewSessionPage() {
         recorder.stop();
       });
 
-      if (audio.size) {
+      // Only spend an API call uploading audio when the server actually has a
+      // speech provider (Whisper) configured; otherwise fall back to the live
+      // browser transcript or the typed answer below.
+      if (audio.size && aiProviders.whisper) {
         try {
           const { data } = await sessionsApi.transcribeAudio(sessionId, audio);
           transcript = data.data.transcript?.trim() || '';
-        } catch {
-          // Keep the browser transcript as a fallback when Whisper is unavailable.
+        } catch (error) {
+          toast.error(`Server transcription failed: ${extractErrorMessage(error)}`);
         }
       }
     }
 
-    if (!transcript) transcript = (recognition.isSupported ? recognition.transcript : manualTranscript).trim();
+    if (!transcript) transcript = (manualTranscript || recognition.transcript).trim();
     if (!transcript) {
       toast.error('Please answer the question before submitting.');
       return;
@@ -280,23 +369,28 @@ export default function InterviewSessionPage() {
     );
   }
 
-  if (mediaStatus === 'denied') {
+  if (mediaStatus === 'denied' && !textOnly) {
     return (
       <Card className="mx-auto max-w-md p-8 text-center">
         <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/10 text-red-500">
           <svg className="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M23 7l-7 5 7 5V7zM14 5H3a2 2 0 00-2 2v10a2 2 0 002 2h11a2 2 0 002-2V7a2 2 0 00-2-2z" />
-            <path d="M1 1l22 22" />
+            <path d="M12 1a3 3 0 013 3v8a3 3 0 11-6 0V4a3 3 0 013-3zM19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8" />
           </svg>
         </span>
-        <h1 className="mt-4 text-lg font-semibold text-[var(--color-text)]">Camera &amp; microphone required</h1>
-        <p className="mt-2 text-sm text-[var(--color-text-muted)]">
-          Ghost Interview needs access to your camera and microphone to conduct the mock interview. Please allow
-          access in your browser settings and try again.
+        <h1 className="mt-4 text-lg font-semibold text-[var(--color-text)]">Microphone not available</h1>
+        <p className="mt-2 text-sm text-[var(--color-text-muted)]">{describeMediaError(mediaError)}</p>
+        <p className="mt-3 text-sm text-[var(--color-text-muted)]">
+          You can still complete the interview by <span className="font-semibold text-[var(--color-text)]">typing your answers</span> — just
+          continue below. (The camera is optional and only adds emotion analysis.)
         </p>
-        <Button className="mt-5" onClick={() => window.location.reload()}>
-          Try again
-        </Button>
+        <div className="mt-5 flex flex-col gap-2">
+          <Button onClick={() => setTextOnly(true)}>
+            Continue by typing
+          </Button>
+          <Button variant="secondary" onClick={() => window.location.reload()}>
+            Try microphone again
+          </Button>
+        </div>
       </Card>
     );
   }
@@ -364,10 +458,20 @@ export default function InterviewSessionPage() {
 
         {/* Camera */}
         <Card className="relative overflow-hidden p-0">
-          <video ref={videoRef} autoPlay playsInline muted className="aspect-video w-full bg-black object-cover" />
+          {cameraStatus === 'granted' ? (
+            <video ref={videoRef} autoPlay playsInline muted className="aspect-video w-full bg-black object-cover" />
+          ) : (
+            <div className="flex aspect-video w-full flex-col items-center justify-center gap-1 bg-[var(--color-surface-alt)] text-center">
+              <svg className="h-6 w-6 text-[var(--color-text-muted)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M23 7l-7 5 7 5V7zM14 5H3a2 2 0 00-2 2v10a2 2 0 002 2h11a2 2 0 002-2V7a2 2 0 00-2-2z" />
+                <path d="M1 1l22 22" />
+              </svg>
+              <p className="px-4 text-xs text-[var(--color-text-muted)]">Camera off — emotion analysis disabled</p>
+            </div>
+          )}
           <div className="flex items-center justify-between px-4 py-2.5 text-xs text-[var(--color-text-muted)]">
             <span className="inline-flex items-center gap-1.5">
-              <span className="h-2 w-2 rounded-full bg-green-500" />
+              <span className={`h-2 w-2 rounded-full ${cameraStatus === 'granted' ? 'bg-green-500' : 'bg-gray-400'}`} />
               Your camera
             </span>
             {emotionDetector.error && <span className="text-amber-600">{emotionDetector.error}</span>}
@@ -378,50 +482,93 @@ export default function InterviewSessionPage() {
       <Card className="p-6">
         {!recognition.isSupported && (
           <p className="mb-3 rounded-xl bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
-            Your browser doesn&apos;t support live speech-to-text. Type your answer below instead.
+            {aiProviders.whisper
+              ? "Your browser doesn't support live speech-to-text. Your recorded answer will be transcribed when submitted, or you can type it below."
+              : "Your browser doesn't support live speech-to-text. Type your answer below instead."}
+          </p>
+        )}
+        {recognition.error && (
+          <p className="mb-3 rounded-xl bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
+            Live speech recognition stopped ({recognition.error}).
+            {aiProviders.whisper
+              ? ' Your recorded audio will still be transcribed when submitted; you can also type your answer below.'
+              : ' Type your answer below to continue.'}
           </p>
         )}
 
         {phase === 'idle' && (
           <div className="flex flex-col items-center gap-3 py-2 text-center">
-            <p className="text-sm text-[var(--color-text-muted)]">
-              When you&apos;re ready, start answering. Speak clearly — your response is analyzed as you go.
-            </p>
-            <Button onClick={startAnswering}>
-              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 1a3 3 0 013 3v8a3 3 0 11-6 0V4a3 3 0 013-3zM19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8" />
-              </svg>
-              Start answering
-            </Button>
+            {textOnly ? (
+              <>
+                <p className="text-sm text-[var(--color-text-muted)]">
+                  Microphone is off. Type your answer below and submit it to continue.
+                </p>
+                <Button onClick={startAnswering}>
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" />
+                  </svg>
+                  Type my answer
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-[var(--color-text-muted)]">
+                  When you&apos;re ready, start answering. Speak clearly — your response is analyzed as you go.
+                </p>
+                <Button onClick={startAnswering}>
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 1a3 3 0 013 3v8a3 3 0 11-6 0V4a3 3 0 013-3zM19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8" />
+                  </svg>
+                  Start answering
+                </Button>
+              </>
+            )}
           </div>
         )}
 
         {phase === 'listening' && (
           <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-2.5 rounded-xl bg-red-500/10 px-3.5 py-2.5 text-sm font-semibold text-red-600 dark:text-red-400">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
-              </span>
-              Listening…
-              <div className="ml-auto flex h-4 items-end gap-1 text-red-500">
-                {[0, 1, 2, 3].map((i) => (
-                  <span key={i} className="gi-audio-bar" style={{ height: '100%', animationDelay: `${i * 0.15}s` }} />
-                ))}
+            {textOnly ? (
+              <div className="flex items-center gap-2.5 rounded-xl bg-brand-500/10 px-3.5 py-2.5 text-sm font-semibold text-brand-600 dark:text-brand-400">
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z" />
+                </svg>
+                Typing mode — microphone is off
               </div>
-            </div>
-            {recognition.isSupported ? (
-              <p className="min-h-[5rem] rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-alt)] p-3.5 text-sm leading-relaxed text-[var(--color-text)]">
-                {recognition.transcript || 'Start speaking your answer…'}
-              </p>
             ) : (
-              <textarea
-                className="focus-ring min-h-[6rem] rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3.5 text-sm text-[var(--color-text)]"
-                placeholder="Type your answer…"
-                value={manualTranscript}
-                onChange={(e) => setManualTranscript(e.target.value)}
-              />
+              <div className="flex items-center gap-2.5 rounded-xl bg-red-500/10 px-3.5 py-2.5 text-sm font-semibold text-red-600 dark:text-red-400">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
+                </span>
+                Listening…
+                <div className="ml-auto flex h-4 items-end gap-1 text-red-500">
+                  {[0, 1, 2, 3].map((i) => (
+                    <span key={i} className="gi-audio-bar" style={{ height: '100%', animationDelay: `${i * 0.15}s` }} />
+                  ))}
+                </div>
+              </div>
             )}
+            {/* Always-editable answer box. On browsers with the Web Speech API
+                this shows the live transcript as it's spoken (and lets the user
+                correct it). Where that API is missing (e.g. iOS Safari) or the
+                recording is transcribed on submit, it works as the typed
+                fallback so there is ALWAYS a way to answer. */}
+            <textarea
+              className="focus-ring min-h-[6rem] rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3.5 text-sm text-[var(--color-text)]"
+              autoFocus
+              placeholder={
+                textOnly
+                  ? 'Type your answer here…'
+                  : recognition.isSupported && !recognition.error
+                    ? 'Start speaking your answer — it appears here. You can also type or edit it.'
+                    : aiProviders.whisper
+                      ? 'Speak your answer, or type it here — your recording is transcribed on submit.'
+                      : 'Type your answer here.'
+              }
+              value={manualTranscript || recognition.transcript}
+              onChange={(e) => setManualTranscript(e.target.value)}
+            />
             <div className="flex justify-end">
               <Button onClick={submitAnswer}>Submit answer</Button>
             </div>

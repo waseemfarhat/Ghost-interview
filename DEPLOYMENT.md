@@ -74,6 +74,12 @@ Render uses dynamic outbound IPs, so Atlas must allow connections from anywhere.
    | `JWT_REFRESH_SECRET` | `JWT_REFRESH_SECRET` |
    | `SMTP_PASS` | `SMTP_PASS` (leave blank if you don't send real email) |
 
+   To enable server-side speech transcription (useful when browser live
+   speech recognition is unavailable), also set `OPENAI_API_KEY` in the
+   Render service environment. Whisper transcription requires an OpenAI API
+   key and may incur usage charges; without it, supported browsers use their
+   built-in speech recognition and other browsers can accept typed answers.
+
    All other variables (`NODE_ENV`, `CLIENT_URL`, expiry times, etc.) are
    already set in `render.yaml`.
 4. Click **Apply** / **Create**. Render builds and deploys automatically. The

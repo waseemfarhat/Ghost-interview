@@ -46,3 +46,11 @@ services:
       # Leave blank to log emails to the console instead.
       - key: SMTP_PASS
         sync: false
+      # Optional but RECOMMENDED for mobile: enables server-side speech
+      # transcription (Whisper). This is the ONLY way the interview captures
+      # spoken answers on iOS Safari, which has no built-in speech recognition.
+      # Requires an OpenAI API key (may incur usage charges). Leave blank and
+      # supported desktop/Android browsers use their own live speech-to-text,
+      # while others can type answers.
+      - key: OPENAI_API_KEY
+        sync: false

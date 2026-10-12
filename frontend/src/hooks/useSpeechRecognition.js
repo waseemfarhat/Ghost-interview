@@ -17,6 +17,10 @@ export function useSpeechRecognition() {
   const [error, setError] = useState(null);
   const recognitionRef = useRef(null);
   const finalTranscriptRef = useRef('');
+  // Whether the caller still WANTS to be listening. Chrome's Web Speech API
+  // stops on its own after a pause (even with continuous = true); we use this
+  // to transparently restart it so long answers aren't silently cut off.
+  const wantListeningRef = useRef(false);
 
   useEffect(() => {
     if (!SpeechRecognitionCtor) return undefined;
@@ -40,18 +44,32 @@ export function useSpeechRecognition() {
     };
 
     recognition.onerror = (event) => {
+      // 'no-speech' just means a quiet moment; keep listening. 'aborted'
+      // happens when we restart on purpose. Real errors stop us.
+      if (event.error === 'no-speech' || event.error === 'aborted') return;
+      wantListeningRef.current = false;
       if (event.error !== 'no-speech') {
         setError(event.error);
       }
     };
 
     recognition.onend = () => {
+      // If the caller still wants to listen, restart instead of stopping.
+      if (wantListeningRef.current) {
+        try {
+          recognition.start();
+          return;
+        } catch {
+          // Already started / can't restart; fall through to stop state.
+        }
+      }
       setIsListening(false);
     };
 
     recognitionRef.current = recognition;
 
     return () => {
+      wantListeningRef.current = false;
       recognition.onresult = null;
       recognition.onerror = null;
       recognition.onend = null;
@@ -64,15 +82,23 @@ export function useSpeechRecognition() {
     finalTranscriptRef.current = '';
     setTranscript('');
     setError(null);
+    wantListeningRef.current = true;
     try {
       recognitionRef.current.start();
       setIsListening(true);
-    } catch {
-      // start() throws if already started - safe to ignore.
+    } catch (startError) {
+      if (startError?.name === 'InvalidStateError') {
+        // Already running (e.g. we just restarted it) — that's fine.
+        setIsListening(true);
+        return;
+      }
+      wantListeningRef.current = false;
+      setError(startError?.message || 'Unable to start speech recognition.');
     }
   }, []);
 
   const stop = useCallback(() => {
+    wantListeningRef.current = false;
     recognitionRef.current?.stop();
     setIsListening(false);
   }, []);
