@@ -65,16 +65,15 @@ export default function InterviewSessionPage() {
   const synthesis = useSpeechSynthesis();
   const emotionDetector = useFaceEmotionDetector();
 
-  // Live speech-to-text that works on EVERY device:
+  // Live speech-to-text that works on EVERY device without any API key:
   //  - Chromium browsers (Chrome/Edge/Android) get instant text from the Web
-  //    Speech API in `recognition` (free, on-device-ish).
+  //    Speech API in `recognition` (free, built in).
   //  - Browsers WITHOUT that API — notably iOS Safari and desktop Firefox —
-  //    fall back to `liveTranscription`, which records short audio segments and
-  //    transcribes each server-side (Whisper) so spoken words still appear as
-  //    text while the candidate talks. Requires `aiProviders.whisper`.
-  const liveFallbackEnabled = !textOnly && !recognition.isSupported && aiProviders.whisper;
+  //    fall back to `liveTranscription`, which runs a small Whisper model
+  //    entirely on-device (via transformers.js) so spoken words still appear as
+  //    text while the candidate talks. No key, no server, no cost.
+  const liveFallbackEnabled = !textOnly && !recognition.isSupported;
   const liveTranscription = useLiveTranscription({
-    sessionId,
     stream: streamRef.current,
     enabled: liveFallbackEnabled
   });
@@ -523,10 +522,17 @@ export default function InterviewSessionPage() {
               : "Your browser doesn't support live speech-to-text. Type your answer below instead."}
           </p>
         )}
-        {liveFallbackEnabled && (
+        {liveFallbackEnabled && liveTranscription.status === 'loading' && (
+          <p className="mb-3 flex items-center gap-2.5 rounded-xl bg-brand-500/10 p-3 text-xs font-medium text-brand-700 dark:text-brand-300">
+            <Spinner size={16} className="text-brand-500" />
+            Preparing on-device speech recognition…
+            {liveTranscription.loadProgress > 0 && ` ${liveTranscription.loadProgress}%`} (one-time download)
+          </p>
+        )}
+        {liveFallbackEnabled && liveTranscription.status !== 'loading' && (
           <p className="mb-3 rounded-xl bg-brand-500/10 p-3 text-xs font-medium text-brand-700 dark:text-brand-300">
             Live transcription is on: speak your answer and your words will appear in the box
-            below as they are transcribed. You can also type or edit anything.
+            below as they are transcribed (runs privately on your device). You can also type or edit anything.
           </p>
         )}
         {recognition.error && !liveFallbackEnabled && (
