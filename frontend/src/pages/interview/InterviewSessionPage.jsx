@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { sessionsApi } from '../../api/sessions.api';
 import { extractErrorMessage } from '../../api/client';
 import { useSpeechRecognition } from '../../hooks/useSpeechRecognition';
+import { useLiveTranscription } from '../../hooks/useLiveTranscription';
 import { useSpeechSynthesis } from '../../hooks/useSpeechSynthesis';
 import { useFaceEmotionDetector } from '../../hooks/useFaceEmotionDetector';
 import { Card } from '../../components/ui/Card';
@@ -63,6 +64,20 @@ export default function InterviewSessionPage() {
   const recognition = useSpeechRecognition();
   const synthesis = useSpeechSynthesis();
   const emotionDetector = useFaceEmotionDetector();
+
+  // Live speech-to-text that works on EVERY device:
+  //  - Chromium browsers (Chrome/Edge/Android) get instant text from the Web
+  //    Speech API in `recognition` (free, on-device-ish).
+  //  - Browsers WITHOUT that API — notably iOS Safari and desktop Firefox —
+  //    fall back to `liveTranscription`, which records short audio segments and
+  //    transcribes each server-side (Whisper) so spoken words still appear as
+  //    text while the candidate talks. Requires `aiProviders.whisper`.
+  const liveFallbackEnabled = !textOnly && !recognition.isSupported && aiProviders.whisper;
+  const liveTranscription = useLiveTranscription({
+    sessionId,
+    stream: streamRef.current,
+    enabled: liveFallbackEnabled
+  });
 
   const flushEmotionBuffer = useCallback(async () => {
     if (!emotionBufferRef.current.length) return;
@@ -245,6 +260,17 @@ export default function InterviewSessionPage() {
     synthesis.cancel();
     setManualTranscript('');
     recognition.resetTranscript();
+    liveTranscription.reset();
+
+    // Browsers WITHOUT the Web Speech API (iOS Safari, desktop Firefox):
+    // record short audio segments and transcribe each server-side so spoken
+    // words still appear as text live. The segmented recorder is all we need,
+    // so we skip the full-recording MediaRecorder below.
+    if (liveFallbackEnabled) {
+      liveTranscription.start();
+      setPhase('listening');
+      return;
+    }
 
     // Record the microphone on every answer (when possible) so transcription
     // can happen server-side via Whisper. This is also the ONLY way to capture
@@ -278,31 +304,41 @@ export default function InterviewSessionPage() {
 
   const submitAnswer = async () => {
     let transcript = '';
-    const recorder = mediaRecorderRef.current;
-    if (recorder?.state === 'recording') {
-      const audio = await new Promise((resolve) => {
-        recorder.onstop = () => {
-          resolve(new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' }));
-          audioChunksRef.current = [];
-          mediaRecorderRef.current = null;
-        };
-        recorder.stop();
-      });
 
-      // Only spend an API call uploading audio when the server actually has a
-      // speech provider (Whisper) configured; otherwise fall back to the live
-      // browser transcript or the typed answer below.
-      if (audio.size && aiProviders.whisper) {
-        try {
-          const { data } = await sessionsApi.transcribeAudio(sessionId, audio);
-          transcript = data.data.transcript?.trim() || '';
-        } catch (error) {
-          toast.error(`Server transcription failed: ${extractErrorMessage(error)}`);
+    if (liveFallbackEnabled) {
+      // Stop segment recording (which also transcribes the final, still-
+      // recording segment). Prefer any text the candidate typed/edited, then
+      // fall back to the live-transcribed speech.
+      const spoken = ((await liveTranscription.stop()) || '').trim();
+      transcript = manualTranscript.trim() || spoken;
+    } else {
+      const recorder = mediaRecorderRef.current;
+      if (recorder?.state === 'recording') {
+        const audio = await new Promise((resolve) => {
+          recorder.onstop = () => {
+            resolve(new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' }));
+            audioChunksRef.current = [];
+            mediaRecorderRef.current = null;
+          };
+          recorder.stop();
+        });
+
+        // Only spend an API call uploading audio when the server actually has a
+        // speech provider (Whisper) configured; otherwise fall back to the live
+        // browser transcript or the typed answer below.
+        if (audio.size && aiProviders.whisper) {
+          try {
+            const { data } = await sessionsApi.transcribeAudio(sessionId, audio);
+            transcript = data.data.transcript?.trim() || '';
+          } catch (error) {
+            toast.error(`Server transcription failed: ${extractErrorMessage(error)}`);
+          }
         }
       }
+
+      if (!transcript) transcript = (manualTranscript || recognition.transcript).trim();
     }
 
-    if (!transcript) transcript = (manualTranscript || recognition.transcript).trim();
     if (!transcript) {
       toast.error('Please answer the question before submitting.');
       return;
@@ -480,19 +516,31 @@ export default function InterviewSessionPage() {
       </div>
 
       <Card className="p-6">
-        {!recognition.isSupported && (
+        {!recognition.isSupported && !liveFallbackEnabled && (
           <p className="mb-3 rounded-xl bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
             {aiProviders.whisper
               ? "Your browser doesn't support live speech-to-text. Your recorded answer will be transcribed when submitted, or you can type it below."
               : "Your browser doesn't support live speech-to-text. Type your answer below instead."}
           </p>
         )}
-        {recognition.error && (
+        {liveFallbackEnabled && (
+          <p className="mb-3 rounded-xl bg-brand-500/10 p-3 text-xs font-medium text-brand-700 dark:text-brand-300">
+            Live transcription is on: speak your answer and your words will appear in the box
+            below as they are transcribed. You can also type or edit anything.
+          </p>
+        )}
+        {recognition.error && !liveFallbackEnabled && (
           <p className="mb-3 rounded-xl bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
             Live speech recognition stopped ({recognition.error}).
             {aiProviders.whisper
               ? ' Your recorded audio will still be transcribed when submitted; you can also type your answer below.'
               : ' Type your answer below to continue.'}
+          </p>
+        )}
+        {liveTranscription.error && (
+          <p className="mb-3 rounded-xl bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
+            Live transcription had a problem ({liveTranscription.error}). You can keep speaking,
+            or type your answer below to continue.
           </p>
         )}
 
@@ -551,22 +599,25 @@ export default function InterviewSessionPage() {
             )}
             {/* Always-editable answer box. On browsers with the Web Speech API
                 this shows the live transcript as it's spoken (and lets the user
-                correct it). Where that API is missing (e.g. iOS Safari) or the
-                recording is transcribed on submit, it works as the typed
-                fallback so there is ALWAYS a way to answer. */}
+                correct it). On browsers without it (e.g. iOS Safari, Firefox)
+                the server-transcribed live text appears here instead. Where
+                neither is available it works as the typed fallback so there is
+                ALWAYS a way to answer. */}
             <textarea
               className="focus-ring min-h-[6rem] rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-3.5 text-sm text-[var(--color-text)]"
               autoFocus
               placeholder={
                 textOnly
                   ? 'Type your answer here…'
-                  : recognition.isSupported && !recognition.error
-                    ? 'Start speaking your answer — it appears here. You can also type or edit it.'
-                    : aiProviders.whisper
-                      ? 'Speak your answer, or type it here — your recording is transcribed on submit.'
-                      : 'Type your answer here.'
+                  : liveFallbackEnabled
+                    ? 'Speak your answer — your words appear here as they are transcribed. You can also type or edit it.'
+                    : recognition.isSupported && !recognition.error
+                      ? 'Start speaking your answer — it appears here. You can also type or edit it.'
+                      : aiProviders.whisper
+                        ? 'Speak your answer, or type it here — your recording is transcribed on submit.'
+                        : 'Type your answer here.'
               }
-              value={manualTranscript || recognition.transcript}
+              value={manualTranscript || recognition.transcript || liveTranscription.transcript}
               onChange={(e) => setManualTranscript(e.target.value)}
             />
             <div className="flex justify-end">

@@ -28,7 +28,10 @@ export function useSpeechRecognition() {
     const recognition = new SpeechRecognitionCtor();
     recognition.continuous = true;
     recognition.interimResults = true;
-    recognition.lang = 'en-US';
+    recognition.maxAlternatives = 1;
+    // Prefer the user's own language, but default to US English so the model
+    // matches the interview language by default.
+    recognition.lang = (typeof navigator !== 'undefined' && navigator.language) || 'en-US';
 
     recognition.onresult = (event) => {
       let interim = '';
