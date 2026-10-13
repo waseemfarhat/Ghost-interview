@@ -65,14 +65,13 @@ export default function InterviewSessionPage() {
   const synthesis = useSpeechSynthesis();
   const emotionDetector = useFaceEmotionDetector();
 
-  // Live speech-to-text that works on EVERY device without any API key:
-  //  - Chromium browsers (Chrome/Edge/Android) get instant text from the Web
-  //    Speech API in `recognition` (free, built in).
-  //  - Browsers WITHOUT that API — notably iOS Safari and desktop Firefox —
-  //    fall back to `liveTranscription`, which runs a small Whisper model
-  //    entirely on-device (via transformers.js) so spoken words still appear as
-  //    text while the candidate talks. No key, no server, no cost.
-  const liveFallbackEnabled = !textOnly && !recognition.isSupported;
+  // Live speech-to-text that works on EVERY device, with NO API key, using a
+  // small Whisper model that runs entirely on-device (via transformers.js).
+  // We use it for ALL browsers (not just iOS/Firefox) because Chrome's built-in
+  // Web Speech API is unreliable here — it silently depends on Google's servers
+  // and often produces no text. On-device transcription is self-contained and
+  // behaves the same everywhere: no key, no server, no cost, and private.
+  const liveFallbackEnabled = !textOnly;
   const liveTranscription = useLiveTranscription({
     stream: streamRef.current,
     enabled: liveFallbackEnabled
@@ -261,43 +260,17 @@ export default function InterviewSessionPage() {
     recognition.resetTranscript();
     liveTranscription.reset();
 
-    // Browsers WITHOUT the Web Speech API (iOS Safari, desktop Firefox):
-    // record short audio segments and transcribe each server-side so spoken
-    // words still appear as text live. The segmented recorder is all we need,
-    // so we skip the full-recording MediaRecorder below.
+    // On-device live transcription (used on every device with a mic). Audio
+    // capture starts immediately inside this click; the Whisper model loads in
+    // the background while speech buffers, so words are never missed. This
+    // replaces both the flaky native Web Speech API and the server upload.
     if (liveFallbackEnabled) {
       liveTranscription.start();
       setPhase('listening');
       return;
     }
 
-    // Record the microphone on every answer (when possible) so transcription
-    // can happen server-side via Whisper. This is also the ONLY way to capture
-    // a spoken answer on browsers without the Web Speech API (e.g. iOS Safari),
-    // where recognition.start() does nothing. We only upload the recording on
-    // submit when the server has a speech provider configured.
-    const stream = streamRef.current;
-    if (stream?.getAudioTracks().length && typeof MediaRecorder !== 'undefined') {
-      try {
-        const audioStream = new MediaStream(stream.getAudioTracks());
-        const mimeType = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'].find((type) =>
-          MediaRecorder.isTypeSupported(type)
-        );
-        const recorder = mimeType ? new MediaRecorder(audioStream, { mimeType }) : new MediaRecorder(audioStream);
-        audioChunksRef.current = [];
-        recorder.ondataavailable = (event) => {
-          if (event.data.size) audioChunksRef.current.push(event.data);
-        };
-        recorder.start();
-        mediaRecorderRef.current = recorder;
-      } catch {
-        mediaRecorderRef.current = null;
-      }
-    }
-
-    // Skip live speech recognition in text-only mode (no mic available — it
-    // would just error and re-prompt for a permission we already lack).
-    if (!textOnly) recognition.start();
+    // Text-only fallback: no mic, so just the typed box (handled by the UI).
     setPhase('listening');
   };
 

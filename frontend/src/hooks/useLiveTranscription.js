@@ -9,6 +9,7 @@ import { pipeline, env } from '@huggingface/transformers';
 const MODEL_ID = 'Xenova/whisper-tiny.en';
 const TARGET_SAMPLE_RATE = 16000; // Whisper expects 16 kHz mono audio
 const SEGMENT_SECONDS = 6; // transcribe in ~6s chunks so text appears live
+const MAX_SEGMENT_SECONDS = 30; // never send more than Whisper's 30s window at once
 
 // Fetch model weights + WASM runtime from the Hugging Face CDN at runtime.
 // Nothing is bundled, so the app build stays small.
@@ -31,17 +32,29 @@ function resampleTo16k(samples, fromRate) {
   return out;
 }
 
-/** Flatten an array of Float32Array chunks into one contiguous Float32Array. */
-function concatChunks(chunks) {
-  let total = 0;
-  for (const c of chunks) total += c.length;
-  const out = new Float32Array(total);
-  let offset = 0;
-  for (const c of chunks) {
-    out.set(c, offset);
-    offset += c.length;
+/**
+ * Consume up to `maxSamples` samples from the FRONT of `chunks` (mutating it),
+ * returning them as one Float32Array. Any leftover samples stay buffered for the
+ * next transcription. This keeps each Whisper call within its ~30s window even
+ * if audio piled up while a previous transcription was running.
+ */
+function takeWindow(chunks, maxSamples) {
+  const out = new Float32Array(maxSamples);
+  let filled = 0;
+  while (filled < maxSamples && chunks.length) {
+    const head = chunks[0];
+    const need = maxSamples - filled;
+    if (head.length <= need) {
+      out.set(head, filled);
+      filled += head.length;
+      chunks.shift();
+    } else {
+      out.set(head.subarray(0, need), filled);
+      filled += need;
+      chunks[0] = head.subarray(need);
+    }
   }
-  return out;
+  return out.subarray(0, filled);
 }
 
 /**
@@ -75,7 +88,6 @@ export function useLiveTranscription({ stream, enabled }) {
 
   const ensureModel = useCallback(async () => {
     if (transcriberRef.current) return transcriberRef.current;
-    setStatus('loading');
     setLoadProgress(0);
     const transcriber = await pipeline('automatic-speech-recognition', MODEL_ID, {
       dtype: 'q8', // quantised weights => smaller + faster download
@@ -89,23 +101,15 @@ export function useLiveTranscription({ stream, enabled }) {
     });
     transcriberRef.current = transcriber;
     setLoadProgress(100);
-    setStatus('ready');
     return transcriber;
   }, []);
 
-  // Transcribe one accumulated segment and append the result. Guarded so only
-  // one transcription runs at a time; audio keeps buffering meanwhile.
-  const drain = useCallback(async () => {
-    if (!wantRef.current || busyRef.current || !transcriberRef.current) return;
-    const needed = SEGMENT_SECONDS * nativeRateRef.current;
-    let count = 0;
-    for (const c of bufferRef.current) count += c.length;
-    if (count < needed) return;
-
-    const raw = concatChunks(bufferRef.current);
-    bufferRef.current = [];
+  // Transcribe accumulated audio in bounded windows (~6s preferred, capped at
+  // 30s so a single call never exceeds Whisper's window). Guarded so only one
+  // transcription runs at a time; audio keeps buffering meanwhile.
+  const transcribeWindow = useCallback(async (raw) => {
+    if (!raw.length) return;
     busyRef.current = true;
-
     const audio = resampleTo16k(raw, nativeRateRef.current);
     inFlightRef.current = (async () => {
       try {
@@ -124,6 +128,20 @@ export function useLiveTranscription({ stream, enabled }) {
     await inFlightRef.current;
   }, []);
 
+  const drain = useCallback(async () => {
+    if (!wantRef.current || busyRef.current || !transcriberRef.current) return;
+    const segmentSamples = SEGMENT_SECONDS * nativeRateRef.current;
+    let count = 0;
+    for (const c of bufferRef.current) count += c.length;
+    if (count < segmentSamples) return;
+
+    // Take a bounded window and leave the rest buffered for the next call.
+    const maxWindow = MAX_SEGMENT_SECONDS * nativeRateRef.current;
+    const take = Math.min(count, maxWindow);
+    const raw = takeWindow(bufferRef.current, take);
+    await transcribeWindow(raw);
+  }, [transcribeWindow]);
+
   const start = useCallback(async () => {
     if (!enabled || !stream) return;
     setError(null);
@@ -133,15 +151,10 @@ export function useLiveTranscription({ stream, enabled }) {
     busyRef.current = false;
     inFlightRef.current = null;
 
-    // Load (or reuse) the model first, showing download progress.
-    try {
-      await ensureModel();
-    } catch {
-      setStatus('error');
-      setError('Could not download the on-device speech model. Check your connection and try again, or type your answer below.');
-      return;
-    }
-
+    // 1) Start capturing audio IMMEDIATELY (inside the click gesture, which iOS
+    //    requires for the AudioContext). The model downloads in the background
+    //    while audio buffers, so no spoken words are lost and recording begins
+    //    instantly instead of after a ~40MB download.
     const Ctx = window.AudioContext || window.webkitAudioContext;
     if (!Ctx) {
       setStatus('error');
@@ -152,8 +165,6 @@ export function useLiveTranscription({ stream, enabled }) {
     let ctx;
     try {
       ctx = new Ctx();
-      // iOS starts the context suspended; resume needs a user gesture (we have
-      // one — the "Start answering" click that led here).
       if (ctx.state === 'suspended') await ctx.resume();
     } catch {
       setStatus('error');
@@ -182,8 +193,32 @@ export function useLiveTranscription({ stream, enabled }) {
     processorRef.current = processor;
     sinkRef.current = sink;
     wantRef.current = true;
+    setStatus('loading'); // model still downloading; banner shows progress
+
+    // 2) Load (or reuse) the model. Audio keeps buffering; once ready we drain
+    //    the buffer so anything already spoken gets transcribed too.
+    try {
+      await ensureModel();
+    } catch {
+      wantRef.current = false;
+      try {
+        processor.onaudioprocess = null;
+        processor.disconnect();
+        source.disconnect();
+        sink.disconnect();
+        await ctx.close();
+      } catch {
+        /* ignore */
+      }
+      audioCtxRef.current = null;
+      setStatus('error');
+      setError('Could not download the on-device speech model. Check your connection and try again, or type your answer below.');
+      return;
+    }
     setStatus('recording');
+    drain();
   }, [enabled, stream, ensureModel, drain]);
+
 
   // Stop capturing; transcribe any remaining buffered audio so the tail of the
   // answer isn't lost. Resolves with the full transcript text.
@@ -220,11 +255,15 @@ export function useLiveTranscription({ stream, enabled }) {
       }
     }
 
-    // Transcribe the final, shorter-than-segment buffer.
-    if (transcriberRef.current && bufferRef.current.length) {
-      const raw = concatChunks(bufferRef.current);
-      bufferRef.current = [];
-      if (raw.length) {
+    // Transcribe ALL remaining buffered audio in bounded windows so the tail of
+    // the answer isn't lost, regardless of how much piled up.
+    if (transcriberRef.current) {
+      const maxWindow = MAX_SEGMENT_SECONDS * nativeRateRef.current;
+      while (bufferRef.current.length) {
+        let count = 0;
+        for (const c of bufferRef.current) count += c.length;
+        if (!count) break;
+        const raw = takeWindow(bufferRef.current, Math.min(count, maxWindow));
         try {
           const audio = resampleTo16k(raw, nativeRateRef.current);
           const output = await transcriberRef.current(audio);
