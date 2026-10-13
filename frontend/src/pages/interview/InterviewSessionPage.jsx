@@ -76,6 +76,8 @@ export default function InterviewSessionPage() {
     stream: streamRef.current,
     enabled: liveFallbackEnabled
   });
+  const startLiveTranscription = liveTranscription.start;
+  const liveTranscriptionStatus = liveTranscription.status;
 
   const flushEmotionBuffer = useCallback(async () => {
     if (!emotionBufferRef.current.length) return;
@@ -226,6 +228,23 @@ export default function InterviewSessionPage() {
     };
   }, [mediaStatus]);
 
+  useEffect(() => {
+    if (
+      phase === 'listening' &&
+      liveFallbackEnabled &&
+      recognition.error &&
+      liveTranscriptionStatus === 'idle'
+    ) {
+      startLiveTranscription();
+    }
+  }, [
+    phase,
+    liveFallbackEnabled,
+    recognition.error,
+    liveTranscriptionStatus,
+    startLiveTranscription
+  ]);
+
   // Speak each new question aloud and start emotion detection once ready.
   // Browser speech synthesis needs no microphone, so this also runs in the
   // text-only fallback so the AI interviewer still "asks" the question.
@@ -260,12 +279,24 @@ export default function InterviewSessionPage() {
     recognition.resetTranscript();
     liveTranscription.reset();
 
-    // On-device live transcription (used on every device with a mic). Audio
-    // capture starts immediately inside this click; the Whisper model loads in
-    // the background while speech buffers, so words are never missed. This
-    // replaces both the flaky native Web Speech API and the server upload.
+    // Prefer native recognition for low-latency updates. The on-device model is
+    // a fallback for browsers without Web Speech recognition.
     if (liveFallbackEnabled) {
-      liveTranscription.start();
+      if (!recognition.isSupported) liveTranscription.start();
+      recognition.start();
+      if (aiProviders.whisper && typeof window.MediaRecorder !== 'undefined') {
+        try {
+          audioChunksRef.current = [];
+          const recorder = new MediaRecorder(streamRef.current);
+          recorder.ondataavailable = (event) => {
+            if (event.data.size > 0) audioChunksRef.current.push(event.data);
+          };
+          recorder.start(1000);
+          mediaRecorderRef.current = recorder;
+        } catch (error) {
+          toast.error(`Could not start backup audio recording: ${extractErrorMessage(error)}`);
+        }
+      }
       setPhase('listening');
       return;
     }
@@ -276,48 +307,55 @@ export default function InterviewSessionPage() {
 
   const submitAnswer = async () => {
     let transcript = '';
+    setPhase('submitting');
+
+    const typedAnswer = manualTranscript.trim();
+    let recordedAudio = null;
+    const recorder = mediaRecorderRef.current;
+    if (recorder?.state === 'recording') {
+      recordedAudio = await new Promise((resolve) => {
+        recorder.onstop = () => {
+          resolve(new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' }));
+          audioChunksRef.current = [];
+          mediaRecorderRef.current = null;
+        };
+        recorder.stop();
+      });
+    }
 
     if (liveFallbackEnabled) {
-      // Stop segment recording (which also transcribes the final, still-
-      // recording segment). Prefer any text the candidate typed/edited, then
-      // fall back to the live-transcribed speech.
-      const spoken = ((await liveTranscription.stop()) || '').trim();
-      transcript = manualTranscript.trim() || spoken;
+      const browserTranscript = ((await recognition.stop()) || recognition.transcript).trim();
+      // Browser speech recognition works as soon as the user starts speaking;
+      // use it before waiting on the larger on-device model.
+      transcript = typedAnswer || browserTranscript;
+      const localTranscript = recognition.isSupported
+        ? ''
+        : (
+            (await liveTranscription.stop({
+              waitForModel: !transcript && !recordedAudio
+            })) || ''
+          ).trim();
+      transcript ||= localTranscript;
     } else {
-      const recorder = mediaRecorderRef.current;
-      if (recorder?.state === 'recording') {
-        const audio = await new Promise((resolve) => {
-          recorder.onstop = () => {
-            resolve(new Blob(audioChunksRef.current, { type: recorder.mimeType || 'audio/webm' }));
-            audioChunksRef.current = [];
-            mediaRecorderRef.current = null;
-          };
-          recorder.stop();
-        });
+      transcript = typedAnswer;
+    }
 
-        // Only spend an API call uploading audio when the server actually has a
-        // speech provider (Whisper) configured; otherwise fall back to the live
-        // browser transcript or the typed answer below.
-        if (audio.size && aiProviders.whisper) {
-          try {
-            const { data } = await sessionsApi.transcribeAudio(sessionId, audio);
-            transcript = data.data.transcript?.trim() || '';
-          } catch (error) {
-            toast.error(`Server transcription failed: ${extractErrorMessage(error)}`);
-          }
-        }
+    if (!transcript && recordedAudio?.size && aiProviders.whisper) {
+      try {
+        const { data } = await sessionsApi.transcribeAudio(sessionId, recordedAudio);
+        transcript = data.data.transcript?.trim() || '';
+      } catch (error) {
+        toast.error(`Server transcription failed: ${extractErrorMessage(error)}`);
       }
-
-      if (!transcript) transcript = (manualTranscript || recognition.transcript).trim();
     }
 
     if (!transcript) {
       toast.error('Please answer the question before submitting.');
+      setPhase('idle');
       return;
     }
 
     recognition.stop();
-    setPhase('submitting');
     await flushEmotionBuffer();
 
     try {
@@ -502,18 +540,24 @@ export default function InterviewSessionPage() {
             {liveTranscription.loadProgress > 0 && ` ${liveTranscription.loadProgress}%`} (one-time download)
           </p>
         )}
-        {liveFallbackEnabled && liveTranscription.status !== 'loading' && (
+        {liveFallbackEnabled &&
+          phase === 'listening' &&
+          liveTranscription.status !== 'loading' &&
+          (recognition.isSupported || liveTranscription.status === 'recording' || liveTranscription.status === 'ready') && (
           <p className="mb-3 rounded-xl bg-brand-500/10 p-3 text-xs font-medium text-brand-700 dark:text-brand-300">
-            Live transcription is on: speak your answer and your words will appear in the box
-            below as they are transcribed (runs privately on your device). You can also type or edit anything.
+            {recognition.isSupported && !recognition.error
+              ? 'Live browser speech recognition is on. Speak naturally and your words should appear as you talk. You can also type or edit your answer.'
+              : 'Live on-device transcription is on. Speak your answer and your words will appear below as they are transcribed. You can also type or edit anything.'}
           </p>
         )}
-        {recognition.error && !liveFallbackEnabled && (
+        {recognition.error && (
           <p className="mb-3 rounded-xl bg-amber-50 p-3 text-xs text-amber-800 dark:bg-amber-900/30 dark:text-amber-200">
-            Live speech recognition stopped ({recognition.error}).
-            {aiProviders.whisper
-              ? ' Your recorded audio will still be transcribed when submitted; you can also type your answer below.'
-              : ' Type your answer below to continue.'}
+            Browser speech recognition reported an issue ({recognition.error}).
+            {liveFallbackEnabled
+              ? ' On-device or server transcription will still be tried when you submit.'
+              : aiProviders.whisper
+                ? ' Your recorded audio will still be transcribed when submitted; you can also type your answer below.'
+                : ' Type your answer below to continue.'}
           </p>
         )}
         {liveTranscription.error && (

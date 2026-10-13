@@ -17,6 +17,8 @@ export function useSpeechRecognition() {
   const [error, setError] = useState(null);
   const recognitionRef = useRef(null);
   const finalTranscriptRef = useRef('');
+  const stopResolveRef = useRef(null);
+  const stopTimeoutRef = useRef(null);
   // Whether the caller still WANTS to be listening. Chrome's Web Speech API
   // stops on its own after a pause (even with continuous = true); we use this
   // to transparently restart it so long answers aren't silently cut off.
@@ -67,6 +69,13 @@ export function useSpeechRecognition() {
         }
       }
       setIsListening(false);
+      if (stopResolveRef.current) {
+        clearTimeout(stopTimeoutRef.current);
+        stopTimeoutRef.current = null;
+        const resolve = stopResolveRef.current;
+        stopResolveRef.current = null;
+        resolve(finalTranscriptRef.current.trim());
+      }
     };
 
     recognitionRef.current = recognition;
@@ -77,6 +86,11 @@ export function useSpeechRecognition() {
       recognition.onerror = null;
       recognition.onend = null;
       recognition.stop();
+      clearTimeout(stopTimeoutRef.current);
+      if (stopResolveRef.current) {
+        stopResolveRef.current(finalTranscriptRef.current.trim());
+        stopResolveRef.current = null;
+      }
     };
   }, []);
 
@@ -100,11 +114,30 @@ export function useSpeechRecognition() {
     }
   }, []);
 
-  const stop = useCallback(() => {
+  const stop = useCallback(() => new Promise((resolve) => {
     wantListeningRef.current = false;
-    recognitionRef.current?.stop();
+    const recognition = recognitionRef.current;
+    if (!recognition || !isListening) {
+      resolve(finalTranscriptRef.current.trim());
+      return;
+    }
+    stopResolveRef.current = resolve;
+    stopTimeoutRef.current = setTimeout(() => {
+      if (!stopResolveRef.current) return;
+      const finish = stopResolveRef.current;
+      stopResolveRef.current = null;
+      finish(finalTranscriptRef.current.trim());
+    }, 1200);
+    try {
+      recognition.stop();
+    } catch {
+      clearTimeout(stopTimeoutRef.current);
+      stopTimeoutRef.current = null;
+      stopResolveRef.current = null;
+      resolve(finalTranscriptRef.current.trim());
+    }
     setIsListening(false);
-  }, []);
+  }), [isListening]);
 
   const resetTranscript = useCallback(() => {
     finalTranscriptRef.current = '';

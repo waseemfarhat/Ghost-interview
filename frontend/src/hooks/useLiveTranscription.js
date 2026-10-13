@@ -77,6 +77,8 @@ export function useLiveTranscription({ stream, enabled }) {
   const wantRef = useRef(false); // still capturing audio?
   const busyRef = useRef(false); // a transcription is currently running?
   const inFlightRef = useRef(null); // the in-flight transcription promise
+  const modelPromiseRef = useRef(null);
+  const startSequenceRef = useRef(0);
   const baseRef = useRef(''); // accumulated transcript text
 
   const audioCtxRef = useRef(null);
@@ -119,8 +121,12 @@ export function useLiveTranscription({ stream, enabled }) {
           baseRef.current = baseRef.current ? `${baseRef.current} ${text}` : text;
           setTranscript(baseRef.current);
         }
-      } catch {
-        // A single failed segment shouldn't stop the interview.
+      } catch (transcriptionError) {
+        setError(
+          transcriptionError?.message
+            ? `Could not transcribe this audio segment: ${transcriptionError.message}`
+            : 'Could not transcribe this audio segment. Please try speaking again or type your answer.'
+        );
       } finally {
         busyRef.current = false;
       }
@@ -144,6 +150,7 @@ export function useLiveTranscription({ stream, enabled }) {
 
   const start = useCallback(async () => {
     if (!enabled || !stream) return;
+    const startSequence = ++startSequenceRef.current;
     setError(null);
     setTranscript('');
     baseRef.current = '';
@@ -163,43 +170,66 @@ export function useLiveTranscription({ stream, enabled }) {
     }
 
     let ctx;
+    let source;
+    let processor;
+    let sink;
     try {
       ctx = new Ctx();
       if (ctx.state === 'suspended') await ctx.resume();
-    } catch {
+      if (!stream.getAudioTracks().some((track) => track.readyState === 'live' && track.enabled)) {
+        throw new Error('The microphone audio track is unavailable.');
+      }
+      nativeRateRef.current = ctx.sampleRate || TARGET_SAMPLE_RATE;
+
+      source = ctx.createMediaStreamSource(stream);
+      processor = ctx.createScriptProcessor(4096, 1, 1);
+      processor.onaudioprocess = (event) => {
+        if (!wantRef.current) return;
+        bufferRef.current.push(new Float32Array(event.inputBuffer.getChannelData(0)));
+        drain();
+      };
+      // Route through a zero-gain node so the graph is "pulled" without
+      // echoing the microphone back through the speakers.
+      sink = ctx.createGain();
+      sink.gain.value = 0;
+      source.connect(processor);
+      processor.connect(sink);
+      sink.connect(ctx.destination);
+
+      audioCtxRef.current = ctx;
+      sourceRef.current = source;
+      processorRef.current = processor;
+      sinkRef.current = sink;
+    } catch (captureError) {
+      try {
+        if (processor) processor.onaudioprocess = null;
+        processor?.disconnect();
+        source?.disconnect();
+        sink?.disconnect();
+        if (ctx && ctx.state !== 'closed') await ctx.close();
+      } catch {
+        // Preserve the original capture error.
+      }
       setStatus('error');
-      setError('Could not start audio capture. Please type your answer below.');
+      setError(
+        captureError?.message
+          ? `Could not start microphone capture: ${captureError.message}`
+          : 'Could not start microphone capture. Please check microphone access and try again.'
+      );
       return;
     }
-    nativeRateRef.current = ctx.sampleRate || TARGET_SAMPLE_RATE;
 
-    const source = ctx.createMediaStreamSource(stream);
-    const processor = ctx.createScriptProcessor(4096, 1, 1);
-    processor.onaudioprocess = (event) => {
-      if (!wantRef.current) return;
-      bufferRef.current.push(new Float32Array(event.inputBuffer.getChannelData(0)));
-      drain();
-    };
-    // Route through a zero-gain node so the graph is "pulled" (required on some
-    // browsers for onaudioprocess to fire) without echoing the mic to speakers.
-    const sink = ctx.createGain();
-    sink.gain.value = 0;
-    source.connect(processor);
-    processor.connect(sink);
-    sink.connect(ctx.destination);
-
-    audioCtxRef.current = ctx;
-    sourceRef.current = source;
-    processorRef.current = processor;
-    sinkRef.current = sink;
     wantRef.current = true;
     setStatus('loading'); // model still downloading; banner shows progress
 
     // 2) Load (or reuse) the model. Audio keeps buffering; once ready we drain
     //    the buffer so anything already spoken gets transcribed too.
+    const modelPromise = ensureModel();
+    modelPromiseRef.current = modelPromise;
     try {
-      await ensureModel();
-    } catch {
+      await modelPromise;
+    } catch (modelError) {
+      if (startSequence !== startSequenceRef.current) return;
       wantRef.current = false;
       try {
         processor.onaudioprocess = null;
@@ -212,9 +242,14 @@ export function useLiveTranscription({ stream, enabled }) {
       }
       audioCtxRef.current = null;
       setStatus('error');
-      setError('Could not download the on-device speech model. Check your connection and try again, or type your answer below.');
+      setError(
+        modelError?.message
+          ? `Could not load on-device speech recognition: ${modelError.message}. Check your connection and try again, or type your answer below.`
+          : 'Could not load on-device speech recognition. Check your connection and try again, or type your answer below.'
+      );
       return;
     }
+    if (startSequence !== startSequenceRef.current || !wantRef.current) return;
     setStatus('recording');
     drain();
   }, [enabled, stream, ensureModel, drain]);
@@ -222,7 +257,8 @@ export function useLiveTranscription({ stream, enabled }) {
 
   // Stop capturing; transcribe any remaining buffered audio so the tail of the
   // answer isn't lost. Resolves with the full transcript text.
-  const stop = useCallback(async () => {
+  const stop = useCallback(async ({ waitForModel = true } = {}) => {
+    startSequenceRef.current += 1;
     wantRef.current = false;
 
     try {
@@ -255,6 +291,19 @@ export function useLiveTranscription({ stream, enabled }) {
       }
     }
 
+    if (waitForModel && modelPromiseRef.current && !transcriberRef.current) {
+      try {
+        await modelPromiseRef.current;
+      } catch (modelError) {
+        setStatus('error');
+        setError(
+          modelError?.message
+            ? `Could not load on-device speech recognition: ${modelError.message}. Check your connection and try again, or type your answer below.`
+            : 'Could not load on-device speech recognition. Check your connection and try again, or type your answer below.'
+        );
+      }
+    }
+
     // Transcribe ALL remaining buffered audio in bounded windows so the tail of
     // the answer isn't lost, regardless of how much piled up.
     if (transcriberRef.current) {
@@ -270,14 +319,19 @@ export function useLiveTranscription({ stream, enabled }) {
           const text = (output && output.text ? output.text : '').trim();
           if (text) {
             baseRef.current = baseRef.current ? `${baseRef.current} ${text}` : text;
+            setTranscript(baseRef.current);
           }
-        } catch {
-          /* ignore */
+        } catch (transcriptionError) {
+          setError(
+            transcriptionError?.message
+              ? `Could not transcribe the end of your answer: ${transcriptionError.message}`
+              : 'Could not transcribe the end of your answer. Please try speaking again or type your answer.'
+          );
         }
       }
     }
 
-    setStatus('ready');
+    if (transcriberRef.current) setStatus('ready');
     return baseRef.current;
   }, []);
 
@@ -326,4 +380,3 @@ export function useLiveTranscription({ stream, enabled }) {
     reset
   };
 }
-
