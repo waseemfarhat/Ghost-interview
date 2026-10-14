@@ -2,6 +2,7 @@ import { User } from '../models/User.js';
 import { InterviewSession } from '../models/InterviewSession.js';
 import { Report } from '../models/Report.js';
 import { JobRole } from '../models/JobRole.js';
+import { AdminNotification } from '../models/AdminNotification.js';
 import { ApiError } from '../utils/ApiError.js';
 import { asyncHandler } from '../utils/asyncHandler.js';
 
@@ -90,6 +91,16 @@ export const getAnalyticsOverview = asyncHandler(async (req, res) => {
         }
       ])
     ]);
+  const [jobRoles, interviewCounts] = await Promise.all([
+    JobRole.find().select('roleName category isActive').sort({ roleName: 1 }),
+    InterviewSession.aggregate([
+      { $match: { status: 'completed' } },
+      { $group: { _id: '$jobRole', completedInterviewCount: { $sum: 1 } } }
+    ])
+  ]);
+  const completedCountsByRole = new Map(
+    interviewCounts.map(({ _id, completedInterviewCount }) => [_id.toString(), completedInterviewCount])
+  );
 
   res.json({
     success: true,
@@ -104,7 +115,37 @@ export const getAnalyticsOverview = asyncHandler(async (req, res) => {
         confidence: Math.round(avgScores[0]?.avgConfidence || 0),
         competency: Math.round(avgScores[0]?.avgCompetency || 0),
         readiness: Number((avgScores[0]?.avgReadiness || 0).toFixed(1))
-      }
+      },
+      jobRoleInterviewCounts: jobRoles.map((jobRole) => ({
+        id: jobRole._id,
+        roleName: jobRole.roleName,
+        category: jobRole.category,
+        isActive: jobRole.isActive,
+        completedInterviewCount: completedCountsByRole.get(jobRole._id.toString()) || 0
+      }))
     }
   });
+});
+
+export const listNotifications = asyncHandler(async (req, res) => {
+  const [items, unreadCount] = await Promise.all([
+    AdminNotification.find({ recipient: req.user.id })
+      .populate('jobRole', 'roleName category')
+      .sort({ createdAt: -1 })
+      .limit(20),
+    AdminNotification.countDocuments({ recipient: req.user.id, isRead: false })
+  ]);
+
+  res.json({ success: true, data: { items, unreadCount } });
+});
+
+export const markNotificationRead = asyncHandler(async (req, res) => {
+  const notification = await AdminNotification.findOneAndUpdate(
+    { _id: req.params.id, recipient: req.user.id },
+    { $set: { isRead: true } },
+    { new: true }
+  ).populate('jobRole', 'roleName category');
+
+  if (!notification) throw ApiError.notFound('Notification not found');
+  res.json({ success: true, data: { notification } });
 });

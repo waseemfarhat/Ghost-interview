@@ -23,3 +23,11 @@ export const authLimiter = rateLimit({
   skipSuccessfulRequests: true,
   handler: limitHandler
 });
+
+export const roleGenerationLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: limitHandler
+});

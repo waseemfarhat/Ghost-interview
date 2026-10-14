@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import toast from 'react-hot-toast';
 import { jobRolesApi } from '../../api/jobRoles.api';
 import { extractErrorMessage } from '../../api/client';
@@ -14,6 +14,8 @@ const emptyForm = { roleName: '', category: '', description: '', questions: ['']
 
 export default function AdminJobRolesPage() {
   const [roles, setRoles] = useState([]);
+  const latestLoadId = useRef(0);
+  const [search, setSearch] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [modalState, setModalState] = useState(null); // { mode: 'create'|'edit', role }
   const [form, setForm] = useState(emptyForm);
@@ -21,21 +23,27 @@ export default function AdminJobRolesPage() {
   const [deactivateTarget, setDeactivateTarget] = useState(null);
   const [isDeactivating, setIsDeactivating] = useState(false);
 
-  const loadRoles = async () => {
+  const loadRoles = async (searchTerm = '') => {
+    const loadId = ++latestLoadId.current;
     setIsLoading(true);
     try {
-      const { data } = await jobRolesApi.list({ limit: 100, includeInactive: true });
-      setRoles(data.data.items);
+      const { data } = await jobRolesApi.list({
+        limit: 100,
+        includeInactive: true,
+        search: searchTerm || undefined
+      });
+      if (loadId === latestLoadId.current) setRoles(data.data.items);
     } catch (error) {
-      toast.error(extractErrorMessage(error));
+      if (loadId === latestLoadId.current) toast.error(extractErrorMessage(error));
     } finally {
-      setIsLoading(false);
+      if (loadId === latestLoadId.current) setIsLoading(false);
     }
   };
 
   useEffect(() => {
-    loadRoles();
-  }, []);
+    const timeoutId = window.setTimeout(() => loadRoles(search.trim()), 220);
+    return () => window.clearTimeout(timeoutId);
+  }, [search]);
 
   const openCreate = () => {
     setForm(emptyForm);
@@ -88,7 +96,7 @@ export default function AdminJobRolesPage() {
         toast.success('Job role updated');
       }
       setModalState(null);
-      loadRoles();
+      loadRoles(search.trim());
     } catch (error) {
       toast.error(extractErrorMessage(error));
     } finally {
@@ -102,7 +110,7 @@ export default function AdminJobRolesPage() {
       await jobRolesApi.remove(deactivateTarget._id);
       toast.success('Job role deactivated');
       setDeactivateTarget(null);
-      loadRoles();
+      loadRoles(search.trim());
     } catch (error) {
       toast.error(extractErrorMessage(error));
     } finally {
@@ -122,13 +130,29 @@ export default function AdminJobRolesPage() {
         <Button onClick={openCreate}>Add job role</Button>
       </div>
 
+      <div className="gi-fade-up max-w-xl">
+        <label htmlFor="admin-role-search" className="mb-2 block text-sm font-semibold text-[var(--color-text)]">
+          Search job roles
+        </label>
+        <Input
+          id="admin-role-search"
+          type="search"
+          maxLength={100}
+          placeholder="Search by role or category"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+        />
+      </div>
+
       <Card className="p-6">
         {isLoading ? (
           <div className="flex justify-center py-8">
             <Spinner size={28} className="text-brand-500" />
           </div>
         ) : roles.length === 0 ? (
-          <p className="py-8 text-center text-sm text-[var(--color-text-muted)]">No job roles yet.</p>
+          <p className="py-8 text-center text-sm text-[var(--color-text-muted)]">
+            {search.trim() ? 'No job roles match your search.' : 'No job roles yet.'}
+          </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
@@ -137,6 +161,7 @@ export default function AdminJobRolesPage() {
                   <th className="pb-2 pr-4 font-medium">Role</th>
                   <th className="pb-2 pr-4 font-medium">Category</th>
                   <th className="pb-2 pr-4 font-medium">Questions</th>
+                  <th className="pb-2 pr-4 font-medium">Completed interviews</th>
                   <th className="pb-2 pr-4 font-medium">Status</th>
                   <th className="pb-2 font-medium">Actions</th>
                 </tr>
@@ -144,9 +169,17 @@ export default function AdminJobRolesPage() {
               <tbody>
                 {roles.map((role) => (
                   <tr key={role._id} className="border-b border-[var(--color-border)] transition-colors last:border-0 hover:bg-[var(--color-surface-alt)]">
-                    <td className="py-3 pr-4 font-medium text-[var(--color-text)]">{role.roleName}</td>
+                    <td className="py-3 pr-4 font-medium text-[var(--color-text)]">
+                      <span className="flex items-center gap-2">
+                        {role.roleName}
+                        {role.isAiGenerated && <Badge variant="brand">AI added</Badge>}
+                      </span>
+                    </td>
                     <td className="py-3 pr-4 text-[var(--color-text-muted)]">{role.category}</td>
                     <td className="py-3 pr-4 text-[var(--color-text-muted)]">{role.questionBank?.length || 0}</td>
+                    <td className="py-3 pr-4 font-semibold tabular-nums text-[var(--color-text)]">
+                      {role.completedInterviewCount || 0}
+                    </td>
                     <td className="py-3 pr-4">
                       <Badge variant={role.isActive ? 'success' : 'neutral'}>{role.isActive ? 'active' : 'inactive'}</Badge>
                     </td>

@@ -9,6 +9,8 @@ const router = Router();
 router.use(authenticate, authorize('admin'));
 
 router.get('/analytics/overview', adminController.getAnalyticsOverview);
+router.get('/notifications', adminController.listNotifications);
+router.patch('/notifications/:id/read', validate({ params: idParamSchema }), adminController.markNotificationRead);
 
 router.get('/users', validate({ query: listUsersQuerySchema }), adminController.listUsers);
 router.get('/users/:id', validate({ params: idParamSchema }), adminController.getUser);

@@ -5,5 +5,7 @@ export const adminApi = {
   getUser: (id) => apiClient.get(`/admin/users/${id}`),
   updateUserStatus: (id, status) => apiClient.patch(`/admin/users/${id}/status`, { status }),
   deleteUser: (id) => apiClient.delete(`/admin/users/${id}`),
+  listNotifications: () => apiClient.get('/admin/notifications'),
+  markNotificationRead: (id) => apiClient.patch(`/admin/notifications/${id}/read`),
   getAnalyticsOverview: () => apiClient.get('/admin/analytics/overview')
 };

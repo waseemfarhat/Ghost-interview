@@ -45,9 +45,12 @@ full rationale.
   stability, overall readiness, strengths/improvement areas, emotion
   distribution) with one-click **PDF export** of the report → interview
   history dashboard
+- ✅ **AI job roles**: candidates can search suggested roles or generate a
+  missing role and its interview question bank with Gemini; generated roles
+  are active immediately and create in-app admin notifications
 - ✅ **Admin panel**: user management (search, suspend/reactivate, delete),
   job role management (create/edit/deactivate roles and their question
-  banks), platform-wide analytics
+  banks, search, and completed interview counts), platform-wide analytics
 - ✅ Security: rate limiting, NoSQL-injection sanitization, CSRF-guarded
   refresh endpoint, ownership checks on every session/report endpoint
 - **Remaining validation:** real-device camera/microphone testing, provider
@@ -108,7 +111,9 @@ support during interviews.
   `mongodb://127.0.0.1:27017/ghost_interview`) and generate two strong
   secrets for `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET`. Optional AI keys
   (`GEMINI_API_KEY`, `OPENAI_API_KEY`, `ELEVENLABS_API_KEY` plus
-  `ELEVENLABS_VOICE_ID`) enable the matching server-side providers. Keep
+  `ELEVENLABS_VOICE_ID`) enable the matching server-side providers. Gemini
+  must be configured to create new job roles and generate their question
+  banks. Keep
   them only in `backend/.env`; blank values use the documented fallbacks.
   On networks where Node's DNS resolver cannot resolve MongoDB SRV records,
   set `MONGO_DNS_SERVERS=8.8.8.8,1.1.1.1`:

@@ -38,6 +38,10 @@ const jobRoleSchema = new Schema(
       type: [questionSchema],
       default: []
     },
+    isAiGenerated: {
+      type: Boolean,
+      default: false
+    },
     isActive: {
       type: Boolean,
       default: true

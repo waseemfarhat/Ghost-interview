@@ -3,6 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import { ThemeToggle } from '../ui/ThemeToggle';
+import { AdminNotificationBell } from './AdminNotificationBell';
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: DashboardIcon },
@@ -66,6 +67,7 @@ export function AppLayout() {
           <div className="hidden md:block" />
 
           <div className="flex items-center gap-3">
+            {user?.role === 'admin' && <AdminNotificationBell />}
             <ThemeToggle />
             <div className="hidden text-right sm:block">
               <p className="text-sm font-semibold text-[var(--color-text)]">{user?.fullName}</p>

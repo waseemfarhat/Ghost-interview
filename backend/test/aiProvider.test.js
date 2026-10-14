@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { afterEach, test } from 'node:test';
 import { env } from '../src/config/env.js';
 import {
+  generateJobRoleProfile,
   generateInterviewQuestions,
   getAiProviderCapabilities,
   synthesizeQuestionAudio,
@@ -20,6 +21,65 @@ afterEach(() => {
   env.ai.openAiApiKey = originalOpenAiKey;
   env.ai.elevenLabsApiKey = originalElevenLabsKey;
   env.ai.elevenLabsVoiceId = originalVoiceId;
+});
+
+test('job role generation returns role details and validated question-bank entries', async () => {
+  env.ai.geminiApiKey = 'test-key';
+  const questions = Array.from({ length: 10 }, (_, index) => `Role-specific interview question number ${index + 1}?`);
+  globalThis.fetch = async (_url, options) => {
+    assert.equal(options.headers['x-goog-api-key'], 'test-key');
+    return new Response(
+      JSON.stringify({
+        candidates: [{
+          content: {
+            parts: [{
+              text: JSON.stringify({
+                category: 'Finance',
+                description: 'Financial reporting and account reconciliation.',
+                questions
+              })
+            }]
+          }
+        }]
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
+  };
+
+  const result = await generateJobRoleProfile('Accountant');
+  assert.equal(result.roleName, 'Accountant');
+  assert.equal(result.category, 'Finance');
+  assert.equal(result.questionBank.length, 10);
+  assert.deepEqual(result.questionBank[0], { text: questions[0], order: 0 });
+  assert.ok(result.questionsGeneratedAt instanceof Date);
+});
+
+test('job role generation returns null when Gemini is unavailable', async () => {
+  env.ai.geminiApiKey = '';
+  assert.equal(await generateJobRoleProfile('Accountant'), null);
+});
+
+test('job role generation rejects incomplete AI question banks', async () => {
+  env.ai.geminiApiKey = 'test-key';
+  globalThis.fetch = async () =>
+    new Response(
+      JSON.stringify({
+        candidates: [{
+          content: {
+            parts: [{
+              text: JSON.stringify({
+                category: 'Finance',
+                description: 'Financial reporting and account reconciliation.',
+                questions: ['How do you reconcile accounts accurately?']
+              })
+            }]
+          }
+        }]
+      }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
+
+  assert.equal(await generateJobRoleProfile('Accountant'), null);
 });
 
 test('question generation returns validated Gemini questions', async () => {

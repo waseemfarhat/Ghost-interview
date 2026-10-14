@@ -2,8 +2,10 @@ import { Router } from 'express';
 import * as jobRoleController from '../controllers/jobRole.controller.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
+import { roleGenerationLimiter } from '../middleware/rateLimiter.js';
 import {
   createJobRoleSchema,
+  generateJobRoleSchema,
   updateJobRoleSchema,
   listJobRolesQuerySchema,
   idParamSchema
@@ -14,6 +16,13 @@ const router = Router();
 router.use(authenticate);
 
 router.get('/', validate({ query: listJobRolesQuerySchema }), jobRoleController.listJobRoles);
+router.post(
+  '/generate',
+  authorize('candidate'),
+  roleGenerationLimiter,
+  validate({ body: generateJobRoleSchema }),
+  jobRoleController.generateJobRole
+);
 router.get('/:id', validate({ params: idParamSchema }), jobRoleController.getJobRole);
 
 router.post('/', authorize('admin'), validate({ body: createJobRoleSchema }), jobRoleController.createJobRole);

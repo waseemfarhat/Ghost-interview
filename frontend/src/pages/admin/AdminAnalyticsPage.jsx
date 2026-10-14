@@ -6,6 +6,7 @@ import { useCountUp } from '../../hooks/useCountUp';
 import { Card } from '../../components/ui/Card';
 import { Spinner } from '../../components/ui/Spinner';
 import { Aurora } from '../../components/ui/Aurora';
+import { Input } from '../../components/ui/Input';
 
 function StatCard({ label, value, icon }) {
   const { ref, display } = useCountUp(value);
@@ -31,6 +32,7 @@ function StatCard({ label, value, icon }) {
 export default function AdminAnalyticsPage() {
   const [stats, setStats] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [roleSearch, setRoleSearch] = useState('');
 
   useEffect(() => {
     (async () => {
@@ -55,14 +57,20 @@ export default function AdminAnalyticsPage() {
 
   if (!stats) return null;
 
+  const roleInterviewCounts = (stats.jobRoleInterviewCounts || [])
+    .filter((role) =>
+      `${role.roleName} ${role.category}`.toLocaleLowerCase().includes(roleSearch.trim().toLocaleLowerCase())
+    )
+    .sort((first, second) => second.completedInterviewCount - first.completedInterviewCount);
+
   return (
     <div className="flex flex-col gap-6">
-      <div>
+      <div className="gi-fade-up">
         <h1 className="text-2xl font-extrabold tracking-tight text-[var(--color-text)] sm:text-3xl">Analytics</h1>
         <p className="mt-1 text-[var(--color-text-muted)]">Platform-wide usage and performance overview.</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="gi-stagger grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard label="Total users" value={stats.totalUsers} icon={<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 3a4 4 0 100 8 4 4 0 000-8zM23 21v-2a4 4 0 00-3-3.87" />} />
         <StatCard label="Candidates" value={stats.totalCandidates} icon={<path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 3a4 4 0 100 8 4 4 0 000-8z" />} />
         <StatCard label="Active job roles" value={stats.totalJobRoles} icon={<path d="M20 7h-4V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2H4a2 2 0 00-2 2v9a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z" />} />
@@ -86,6 +94,56 @@ export default function AdminAnalyticsPage() {
           </div>
         </div>
       </Card>
+
+      <Card className="gi-fade-up p-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h2 className="text-base font-semibold text-[var(--color-text)]">Completed interviews by job role</h2>
+            <p className="mt-1 text-sm text-[var(--color-text-muted)]">
+              See how many interviews candidates have completed for each role.
+            </p>
+          </div>
+          <Input
+            type="search"
+            aria-label="Search role interview counts"
+            placeholder="Search roles"
+            value={roleSearch}
+            onChange={(event) => setRoleSearch(event.target.value)}
+            className="w-full sm:max-w-xs"
+          />
+        </div>
+        {roleInterviewCounts.length === 0 ? (
+          <p className="py-8 text-center text-sm text-[var(--color-text-muted)]">
+            {roleSearch.trim() ? 'No job roles match your search.' : 'No job roles have been added yet.'}
+          </p>
+        ) : (
+          <div className="mt-5 overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-[var(--color-border)] text-xs uppercase tracking-wide text-[var(--color-text-muted)]">
+                  <th className="pb-2 pr-4 font-medium">Job role</th>
+                  <th className="pb-2 pr-4 font-medium">Category</th>
+                  <th className="pb-2 pr-4 font-medium">Completed interviews</th>
+                  <th className="pb-2 font-medium">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {roleInterviewCounts.map((role) => (
+                  <tr
+                    key={role.id}
+                    className="border-b border-[var(--color-border)] transition-colors last:border-0 hover:bg-[var(--color-surface-alt)]"
+                  >
+                    <td className="py-3 pr-4 font-medium text-[var(--color-text)]">{role.roleName}</td>
+                    <td className="py-3 pr-4 text-[var(--color-text-muted)]">{role.category}</td>
+                    <td className="py-3 pr-4 font-semibold tabular-nums text-brand-600">{role.completedInterviewCount}</td>
+                    <td className="py-3 text-[var(--color-text-muted)]">{role.isActive ? 'Active' : 'Inactive'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
     </div>
   );
 }
@@ -102,4 +160,3 @@ function ScoreStat({ label, value, suffix }) {
     </div>
   );
 }
-
