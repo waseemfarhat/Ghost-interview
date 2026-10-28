@@ -196,7 +196,14 @@ export const changePassword = asyncHandler(async (req, res) => {
 
   const isMatch = await user.comparePassword(currentPassword);
   if (!isMatch) {
-    throw ApiError.badRequest('Current password is incorrect');
+    throw ApiError.badRequest('Current password is incorrect', [
+      { field: 'currentPassword', message: 'Current password is incorrect' }
+    ]);
+  }
+  if (await user.comparePassword(newPassword)) {
+    throw ApiError.badRequest('New password must be different from your current password', [
+      { field: 'newPassword', message: 'Choose a password different from your current one' }
+    ]);
   }
 
   user.passwordHash = await User.hashPassword(newPassword);

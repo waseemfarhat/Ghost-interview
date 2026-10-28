@@ -21,6 +21,9 @@ import ReportPage from './pages/interview/ReportPage';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
 import AdminJobRolesPage from './pages/admin/AdminJobRolesPage';
 import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage';
+import AdminPerformancePage from './pages/admin/AdminPerformancePage';
+import AdminInterviewsPage from './pages/admin/AdminInterviewsPage';
+import AdminActivityPage from './pages/admin/AdminActivityPage';
 import NotFoundPage from './pages/NotFoundPage';
 import UnauthorizedPage from './pages/UnauthorizedPage';
 
@@ -60,6 +63,9 @@ function App() {
                   <Route path="/admin/users" element={<AdminUsersPage />} />
                   <Route path="/admin/job-roles" element={<AdminJobRolesPage />} />
                   <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
+                  <Route path="/admin/analytics/performance" element={<AdminPerformancePage />} />
+                  <Route path="/admin/interviews" element={<AdminInterviewsPage />} />
+                  <Route path="/admin/activity" element={<AdminActivityPage />} />
                 </Route>
               </Route>
 

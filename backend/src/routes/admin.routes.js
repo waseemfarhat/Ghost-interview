@@ -2,13 +2,23 @@ import { Router } from 'express';
 import * as adminController from '../controllers/admin.controller.js';
 import { authenticate, authorize } from '../middleware/auth.js';
 import { validate } from '../middleware/validate.js';
-import { listUsersQuerySchema, updateUserStatusSchema, idParamSchema } from '../validators/admin.validator.js';
+import {
+  listUsersQuerySchema,
+  listSessionsQuerySchema,
+  performanceQuerySchema,
+  activityQuerySchema,
+  updateUserStatusSchema,
+  idParamSchema
+} from '../validators/admin.validator.js';
 
 const router = Router();
 
 router.use(authenticate, authorize('admin'));
 
 router.get('/analytics/overview', adminController.getAnalyticsOverview);
+router.get('/analytics/performance', validate({ query: performanceQuerySchema }), adminController.getPerformanceAnalytics);
+router.get('/activity', validate({ query: activityQuerySchema }), adminController.getActivity);
+router.get('/sessions', validate({ query: listSessionsQuerySchema }), adminController.listSessions);
 router.get('/notifications', adminController.listNotifications);
 router.patch('/notifications/:id/read', validate({ params: idParamSchema }), adminController.markNotificationRead);
 

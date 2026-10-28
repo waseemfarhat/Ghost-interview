@@ -7,7 +7,8 @@ export const sessionsApi = {
   transcribeAudio: (id, audio) =>
     apiClient.post(`/sessions/${id}/transcribe`, audio, { headers: { 'Content-Type': audio.type || 'audio/webm' } }),
   list: (params) => apiClient.get('/sessions', { params }),
-  submitAnswer: (id, transcript) => apiClient.post(`/sessions/${id}/responses`, { transcript }),
+  submitAnswer: (id, transcript, questionIndex) =>
+    apiClient.post(`/sessions/${id}/responses`, { transcript, questionIndex }),
   submitEmotionBatch: (id, readings) => apiClient.post(`/sessions/${id}/emotion`, { readings }),
   complete: (id) => apiClient.post(`/sessions/${id}/complete`),
   terminate: (id) => apiClient.post(`/sessions/${id}/terminate`)

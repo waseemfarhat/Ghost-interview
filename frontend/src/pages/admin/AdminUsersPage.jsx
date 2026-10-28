@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { adminApi } from '../../api/admin.api';
 import { extractErrorMessage } from '../../api/client';
@@ -9,37 +10,46 @@ import { Badge, StatusBadge } from '../../components/ui/Badge';
 import { Pagination } from '../../components/ui/Pagination';
 import { ConfirmDialog } from '../../components/ui/ConfirmDialog';
 import { Spinner } from '../../components/ui/Spinner';
+import { DateRangeFilter, FieldLabel, compactParams, selectClass, useUrlFilters } from './adminShared';
 
 export default function AdminUsersPage() {
+  const [filters, setFilters] = useUrlFilters({ search: '', role: '', status: '', from: '', to: '' });
   const [users, setUsers] = useState([]);
   const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 });
-  const [search, setSearch] = useState('');
+  const [search, setSearch] = useState(filters.search);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [confirmAction, setConfirmAction] = useState(null); // { type: 'suspend'|'reactivate'|'delete', user }
   const [isActing, setIsActing] = useState(false);
 
-  const loadUsers = async (page = 1, searchTerm = search) => {
+  useEffect(() => setSearch(filters.search), [filters.search]);
+
+  const { role, status, from, to, page } = filters;
+  const loadUsers = useCallback(async () => {
     setIsLoading(true);
+    setLoadError(null);
     try {
-      const { data } = await adminApi.listUsers({ page, limit: 10, search: searchTerm || undefined });
+      const { data } = await adminApi.listUsers(
+        compactParams({ page, limit: 10, search: filters.search, role, status, from, to })
+      );
       setUsers(data.data.items);
       setPagination(data.data.pagination);
     } catch (error) {
-      toast.error(extractErrorMessage(error));
+      setLoadError(extractErrorMessage(error));
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [page, filters.search, role, status, from, to]);
 
   useEffect(() => {
-    loadUsers(1, '');
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    loadUsers();
+  }, [loadUsers]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    loadUsers(1, search);
+    setFilters({ search: search.trim() });
   };
+  const hasFilters = filters.search || role || status || from || to;
 
   const handleConfirm = async () => {
     if (!confirmAction) return;
@@ -54,7 +64,7 @@ export default function AdminUsersPage() {
         toast.success(`User ${nextStatus === 'suspended' ? 'suspended' : 'reactivated'}`);
       }
       setConfirmAction(null);
-      loadUsers(pagination.page);
+      loadUsers();
     } catch (error) {
       toast.error(extractErrorMessage(error));
     } finally {
@@ -69,20 +79,68 @@ export default function AdminUsersPage() {
         <p className="mt-1 text-[var(--color-text-muted)]">View, suspend, or remove candidate accounts.</p>
       </div>
 
-      <form onSubmit={handleSearchSubmit} className="flex max-w-sm gap-2">
-        <Input placeholder="Search by name or email" value={search} onChange={(e) => setSearch(e.target.value)} />
-        <Button type="submit" variant="secondary">
-          Search
-        </Button>
-      </form>
+      <Card className="p-4 sm:p-5">
+        <form
+          onSubmit={handleSearchSubmit}
+          className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto_auto_auto] lg:items-end"
+        >
+          <div className="flex flex-col gap-1">
+            <FieldLabel htmlFor="user-search">Search</FieldLabel>
+            <Input id="user-search" type="search" placeholder="Name or email" value={search} onChange={(e) => setSearch(e.target.value)} />
+          </div>
+          <div className="flex flex-col gap-1">
+            <FieldLabel htmlFor="user-role">Role</FieldLabel>
+            <select id="user-role" className={selectClass} value={role} onChange={(e) => setFilters({ role: e.target.value })}>
+              <option value="">All roles</option>
+              <option value="candidate">Candidates</option>
+              <option value="admin">Admins</option>
+            </select>
+          </div>
+          <div className="flex flex-col gap-1">
+            <FieldLabel htmlFor="user-status">Status</FieldLabel>
+            <select id="user-status" className={selectClass} value={status} onChange={(e) => setFilters({ status: e.target.value })}>
+              <option value="">All statuses</option>
+              <option value="active">Active</option>
+              <option value="suspended">Suspended</option>
+            </select>
+          </div>
+          <DateRangeFilter from={from} to={to} onChange={setFilters} />
+          <Button type="submit" variant="secondary">
+            Search
+          </Button>
+        </form>
+        {hasFilters && (
+          <button
+            type="button"
+            className="focus-ring mt-3 rounded text-sm font-medium text-brand-600 hover:underline dark:text-brand-300"
+            onClick={() => setFilters({ search: '', role: '', status: '', from: '', to: '' })}
+          >
+            Clear filters
+          </button>
+        )}
+      </Card>
 
-      <Card className="p-6">
+      <Card className="p-4 sm:p-6">
+        {!isLoading && !loadError && (
+          <p className="mb-3 text-sm text-[var(--color-text-muted)]" aria-live="polite">
+            {pagination.total} user{pagination.total === 1 ? '' : 's'}
+          </p>
+        )}
         {isLoading ? (
-          <div className="flex justify-center py-8">
+          <div className="flex justify-center py-8" role="status">
             <Spinner size={28} />
           </div>
+        ) : loadError ? (
+          <div className="flex flex-col items-center gap-3 py-8 text-center">
+            <p className="text-sm text-red-600 dark:text-red-400">{loadError}</p>
+            <Button variant="secondary" size="sm" onClick={loadUsers}>
+              Try again
+            </Button>
+          </div>
         ) : users.length === 0 ? (
-          <p className="py-8 text-center text-sm text-[var(--color-text-muted)]">No users found.</p>
+          <p className="py-8 text-center text-sm text-[var(--color-text-muted)]">
+            {hasFilters ? 'No users match these filters.' : 'No users found.'}
+          </p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm">
@@ -93,6 +151,7 @@ export default function AdminUsersPage() {
                   <th className="pb-2 pr-4 font-medium">Role</th>
                   <th className="pb-2 pr-4 font-medium">Status</th>
                   <th className="pb-2 pr-4 font-medium">Joined</th>
+                  <th className="pb-2 pr-4 font-medium">Interviews</th>
                   <th className="pb-2 font-medium">Actions</th>
                 </tr>
               </thead>
@@ -117,6 +176,19 @@ export default function AdminUsersPage() {
                     <td className="py-3 pr-4 text-[var(--color-text-muted)]">
                       {new Date(u.createdAt).toLocaleDateString()}
                     </td>
+                    <td className="py-3 pr-4 tabular-nums">
+                      {u.interviewCount ? (
+                        <Link
+                          to={`/admin/interviews?user=${u.id}`}
+                          className="focus-ring rounded font-medium text-brand-600 hover:underline dark:text-brand-300"
+                          aria-label={`${u.interviewCount} interviews by ${u.fullName}, ${u.completedInterviewCount} completed`}
+                        >
+                          {u.interviewCount} ({u.completedInterviewCount} completed)
+                        </Link>
+                      ) : (
+                        <span className="text-[var(--color-text-muted)]">0</span>
+                      )}
+                    </td>
                     <td className="py-3">
                       {u.role !== 'admin' && (
                         <div className="flex gap-2">
@@ -139,7 +211,11 @@ export default function AdminUsersPage() {
                 ))}
               </tbody>
             </table>
-            <Pagination page={pagination.page} totalPages={pagination.totalPages} onPageChange={(p) => loadUsers(p)} />
+            <Pagination
+              page={pagination.page}
+              totalPages={pagination.totalPages}
+              onPageChange={(p) => setFilters({ page: p }, { resetPage: false })}
+            />
           </div>
         )}
       </Card>

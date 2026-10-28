@@ -5,7 +5,8 @@ export const startSessionSchema = z.object({
 });
 
 export const submitAnswerSchema = z.object({
-  transcript: z.string().trim().min(1, 'Transcript cannot be empty').max(5000)
+  transcript: z.string().trim().min(1, 'Transcript cannot be empty').max(5000),
+  questionIndex: z.number().int().min(0).optional()
 });
 
 const emotionReadingSchema = z.object({

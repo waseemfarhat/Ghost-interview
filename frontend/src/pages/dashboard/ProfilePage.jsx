@@ -15,6 +15,14 @@ export default function ProfilePage() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const initials = (user?.fullName || 'U')
+    .split(' ')
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join('')
+    .toUpperCase();
+
   const handleChange = (e) => {
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
     setFieldErrors((f) => ({ ...f, [e.target.name]: undefined }));
@@ -28,6 +36,9 @@ export default function ProfilePage() {
     if (!PASSWORD_RULE.test(form.newPassword)) {
       errors.newPassword = 'At least 8 characters, with an uppercase, lowercase, and a number';
     }
+    if (form.newPassword && form.newPassword === form.currentPassword) {
+      errors.newPassword = 'Choose a password different from your current one';
+    }
     if (form.confirmNewPassword !== form.newPassword) errors.confirmNewPassword = 'Passwords do not match';
     if (Object.keys(errors).length) {
       setFieldErrors(errors);
@@ -40,7 +51,8 @@ export default function ProfilePage() {
         currentPassword: form.currentPassword,
         newPassword: form.newPassword
       });
-      toast.success('Password changed. Please log in again.');
+      setForm({ currentPassword: '', newPassword: '', confirmNewPassword: '' });
+      toast.success('Password updated. Please sign in again with your new password.');
       await logout();
     } catch (error) {
       setFieldErrors(extractFieldErrors(error));
@@ -58,21 +70,47 @@ export default function ProfilePage() {
       </div>
 
       <Card className="p-6">
-        <h2 className="text-base font-semibold text-[var(--color-text)]">Account details</h2>
-        <dl className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="flex items-center gap-4">
+          <span
+            className="gi-glow flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-accent-500 text-lg font-bold text-white"
+            aria-hidden="true"
+          >
+            {initials}
+          </span>
+          <div className="min-w-0">
+            <h2 className="truncate text-base font-semibold text-[var(--color-text)]">{user?.fullName}</h2>
+            <p className="text-sm capitalize text-[var(--color-text-muted)]">{user?.role} account</p>
+          </div>
+        </div>
+        <dl className="mt-6 grid grid-cols-1 gap-4 border-t border-[var(--color-border)] pt-5 sm:grid-cols-2">
           <div>
             <dt className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">Full name</dt>
             <dd className="mt-1 text-sm font-medium text-[var(--color-text)]">{user?.fullName}</dd>
           </div>
           <div>
             <dt className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">Email</dt>
-            <dd className="mt-1 text-sm font-medium text-[var(--color-text)]">{user?.email}</dd>
+            <dd className="mt-1 break-all text-sm font-medium text-[var(--color-text)]">{user?.email}</dd>
+          </div>
+          {user?.createdAt && (
+            <div>
+              <dt className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">Member since</dt>
+              <dd className="mt-1 text-sm font-medium text-[var(--color-text)]">
+                {new Date(user.createdAt).toLocaleDateString(undefined, { dateStyle: 'long' })}
+              </dd>
+            </div>
+          )}
+          <div>
+            <dt className="text-xs uppercase tracking-wide text-[var(--color-text-muted)]">Account status</dt>
+            <dd className="mt-1 text-sm font-medium capitalize text-[var(--color-text)]">{user?.status || 'active'}</dd>
           </div>
         </dl>
       </Card>
 
       <Card className="p-6">
         <h2 className="text-base font-semibold text-[var(--color-text)]">Change password</h2>
+        <p className="mt-1 text-sm text-[var(--color-text-muted)]">
+          For your security, you will be signed out of all devices after changing your password.
+        </p>
         <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4" noValidate>
           <Input
             label="Current password"
@@ -91,6 +129,7 @@ export default function ProfilePage() {
             value={form.newPassword}
             onChange={handleChange}
             error={fieldErrors.newPassword}
+            hint="At least 8 characters, including an uppercase letter, a lowercase letter, and a number."
           />
           <Input
             label="Confirm new password"

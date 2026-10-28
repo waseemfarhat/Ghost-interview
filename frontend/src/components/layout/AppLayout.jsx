@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import { ThemeToggle } from '../ui/ThemeToggle';
@@ -12,9 +12,11 @@ const navItems = [
 ];
 
 const adminNavItems = [
+  { to: '/admin/analytics', label: 'Analytics', icon: AnalyticsIcon, end: true },
+  { to: '/admin/interviews', label: 'Interviews', icon: InterviewsIcon },
+  { to: '/admin/activity', label: 'Activity', icon: ActivityIcon },
   { to: '/admin/users', label: 'Users', icon: UsersIcon },
-  { to: '/admin/job-roles', label: 'Job Roles', icon: JobRolesIcon },
-  { to: '/admin/analytics', label: 'Analytics', icon: AnalyticsIcon }
+  { to: '/admin/job-roles', label: 'Job Roles', icon: JobRolesIcon }
 ];
 
 export function AppLayout() {
@@ -69,16 +71,23 @@ export function AppLayout() {
           <div className="flex items-center gap-3">
             {user?.role === 'admin' && <AdminNotificationBell />}
             <ThemeToggle />
-            <div className="hidden text-right sm:block">
-              <p className="text-sm font-semibold text-[var(--color-text)]">{user?.fullName}</p>
-              <p className="text-xs capitalize text-[var(--color-text-muted)]">{user?.role}</p>
-            </div>
-            <span
-              className="gi-glow flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-accent-500 text-xs font-bold text-white"
-              aria-hidden="true"
+            <Link
+              to="/profile"
+              aria-label={`Open your profile${user?.fullName ? ` (${user.fullName})` : ''}`}
+              title="View profile"
+              className="focus-ring group flex items-center gap-3 rounded-full py-0.5 pl-2 pr-0.5 transition-colors hover:bg-[var(--color-surface-alt)] sm:rounded-xl"
             >
-              {initials}
-            </span>
+              <span className="hidden text-right sm:block">
+                <span className="block text-sm font-semibold text-[var(--color-text)]">{user?.fullName}</span>
+                <span className="block text-xs capitalize text-[var(--color-text-muted)]">{user?.role}</span>
+              </span>
+              <span
+                className="gi-glow flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-brand-500 to-accent-500 text-xs font-bold text-white ring-2 ring-transparent transition-all group-hover:ring-brand-300 group-active:scale-95"
+                aria-hidden="true"
+              >
+                {initials}
+              </span>
+            </Link>
             <button
               type="button"
               onClick={handleLogout}
@@ -135,8 +144,8 @@ function SidebarContent({ onNavigate }) {
             <p className="mb-1 mt-5 px-3 text-xs font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
               Admin
             </p>
-            {adminNavItems.map(({ to, label, icon: Icon }) => (
-              <NavLink key={to} to={to} onClick={onNavigate} className={({ isActive }) => linkClass(isActive)}>
+            {adminNavItems.map(({ to, label, icon: Icon, end }) => (
+              <NavLink key={to} to={to} end={end} onClick={onNavigate} className={({ isActive }) => linkClass(isActive)}>
                 {({ isActive }) => (
                   <>
                     {isActive && (
@@ -207,6 +216,22 @@ function JobRolesIcon() {
     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <rect x="2" y="7" width="20" height="14" rx="2" />
       <path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16" />
+    </svg>
+  );
+}
+
+function InterviewsIcon() {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M12 1a3 3 0 013 3v8a3 3 0 11-6 0V4a3 3 0 013-3zM19 10v2a7 7 0 01-14 0v-2M12 19v4" />
+    </svg>
+  );
+}
+
+function ActivityIcon() {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
     </svg>
   );
 }

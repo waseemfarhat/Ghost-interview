@@ -8,6 +8,7 @@ import { asyncHandler } from '../utils/asyncHandler.js';
 import { analyzeTranscript } from '../services/speechAnalysis.service.js';
 import { computeReport } from '../services/report.service.js';
 import {
+  generateFollowUpQuestion,
   generateInterviewQuestions,
   getAiProviderCapabilities,
   synthesizeQuestionAudio,
@@ -20,6 +21,8 @@ async function loadOwnedSession(sessionId, userId) {
   if (session.user.toString() !== userId) throw ApiError.forbidden('This session does not belong to you');
   return session;
 }
+
+const MAX_FOLLOW_UPS = 2;
 
 function currentQuestion(session) {
   return session.questions[session.currentQuestionIndex] || null;
@@ -167,6 +170,11 @@ export const submitAnswer = asyncHandler(async (req, res) => {
 
   const question = currentQuestion(session);
   if (!question) throw ApiError.badRequest('No active question for this session');
+  // Rejects a retried/double-clicked submit that targets a question which has
+  // already been answered, instead of recording it against the next question.
+  if (req.body.questionIndex != null && req.body.questionIndex !== session.currentQuestionIndex) {
+    throw ApiError.conflict('This question has already been answered');
+  }
 
   const analysis = analyzeTranscript(req.body.transcript);
 
@@ -176,6 +184,25 @@ export const submitAnswer = asyncHandler(async (req, res) => {
     transcript: req.body.transcript,
     ...analysis
   });
+
+  // At most MAX_FOLLOW_UPS probing questions per interview, never a follow-up
+  // to a follow-up, and only for answers substantial enough to probe.
+  const followUpsAsked = session.questions.filter((q) => q.isFollowUp).length;
+  const wordCount = req.body.transcript.split(/\s+/).filter(Boolean).length;
+  if (!question.isFollowUp && followUpsAsked < MAX_FOLLOW_UPS && wordCount >= 12) {
+    const jobRole = await JobRole.findById(session.jobRole).select('roleName');
+    const followUp = await generateFollowUpQuestion({
+      roleName: jobRole?.roleName || 'this role',
+      question: question.text,
+      answer: req.body.transcript
+    });
+    if (followUp) {
+      session.questions.splice(session.currentQuestionIndex + 1, 0, { text: followUp, order: 0, isFollowUp: true });
+      session.questions.forEach((q, order) => {
+        q.order = order;
+      });
+    }
+  }
 
   const isLastQuestion = session.currentQuestionIndex >= session.questions.length - 1;
 
@@ -194,6 +221,7 @@ export const submitAnswer = asyncHandler(async (req, res) => {
       isLastQuestion,
       nextQuestion: isLastQuestion ? null : currentQuestion(session),
       currentQuestionIndex: session.currentQuestionIndex,
+      totalQuestions: session.questions.length,
       sessionStatus: session.status
     }
   });

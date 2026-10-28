@@ -66,14 +66,18 @@ export default function DashboardPage() {
     }
   };
 
+  const [completedCount, setCompletedCount] = useState(null);
+
   useEffect(() => {
     loadSessions(1);
     reportsApi.list({ page: 1, limit: 8 })
       .then(({ data }) => setReports(data.data.items))
       .catch((error) => toast.error(extractErrorMessage(error)));
+    sessionsApi.list({ page: 1, limit: 1, status: 'completed' })
+      .then(({ data }) => setCompletedCount(data.data.pagination.total))
+      .catch(() => setCompletedCount(0));
   }, []);
 
-  const completedCount = sessions.filter((s) => s.status === 'completed').length;
   const chronologicalReports = reports.slice().reverse();
   const recentReadiness = chronologicalReports.map((report) => report.overallReadinessScore);
   const latestReadiness = recentReadiness.length ? recentReadiness[recentReadiness.length - 1] : null;
@@ -88,10 +92,11 @@ export default function DashboardPage() {
         <div className="relative flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight text-[var(--color-text)] sm:text-3xl">
-              Welcome back, {firstName} 👋
+              {firstName ? `Welcome back, ${firstName}` : 'Welcome to your AI Interview Dashboard'}
             </h1>
-            <p className="mt-1.5 text-[var(--color-text-muted)]">
-              Ready to practice? Start a new AI mock interview or review your past sessions below.
+            <p className="mt-1.5 max-w-2xl text-[var(--color-text-muted)]">
+              Prepare for your next interview with personalized questions, realistic interview simulations, and
+              performance insights.
             </p>
           </div>
           <Link to="/interview/new">
@@ -107,7 +112,7 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <StatCard label="Total sessions" value={pagination.total} icon={<path d="M3 3v18h18M7 15l3-4 3 3 4-6" />} />
-        <StatCard label="Completed (this page)" value={completedCount} icon={<path d="M20 6L9 17l-5-5" />} accent />
+        <StatCard label="Completed interviews" value={completedCount ?? 0} icon={<path d="M20 6L9 17l-5-5" />} accent />
         <Card hover className="relative overflow-hidden p-5">
           <div className="flex items-start justify-between">
             <div className="min-w-0">

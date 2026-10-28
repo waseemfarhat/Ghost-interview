@@ -7,5 +7,8 @@ export const adminApi = {
   deleteUser: (id) => apiClient.delete(`/admin/users/${id}`),
   listNotifications: () => apiClient.get('/admin/notifications'),
   markNotificationRead: (id) => apiClient.patch(`/admin/notifications/${id}/read`),
-  getAnalyticsOverview: () => apiClient.get('/admin/analytics/overview')
+  getAnalyticsOverview: () => apiClient.get('/admin/analytics/overview'),
+  getPerformance: (params) => apiClient.get('/admin/analytics/performance', { params }),
+  listSessions: (params) => apiClient.get('/admin/sessions', { params }),
+  getActivity: (params) => apiClient.get('/admin/activity', { params })
 };

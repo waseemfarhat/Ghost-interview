@@ -6,7 +6,9 @@ const sessionQuestionSchema = new Schema(
   {
     text: { type: String, required: true },
     order: { type: Number, required: true },
-    askedAt: Date
+    askedAt: Date,
+    // Generated from the candidate's previous answer rather than the role's question bank.
+    isFollowUp: { type: Boolean, default: false }
   },
   { _id: false }
 );
